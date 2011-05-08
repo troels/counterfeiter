@@ -9,6 +9,8 @@ abstract class Pad {
 }
 
 class VariablePad(vars: Map[String, ElementaryExpression], parentPad: Option[Pad]) extends Pad{ 
+  def this(vars: Map[String, ElementaryExpression]) = this(vars, None)
+
   override def lookup(identifier: String): Option[ElementaryExpression] =
     (vars get identifier) orElse (parentPad flatMap (_ lookup identifier))
   override def newPad(vars: Map[String, ElementaryExpression]) = 
