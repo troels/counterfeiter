@@ -1,5 +1,7 @@
 package org.bifrost.counterfeiter
 
+import scala.reflect.AnyValManifest
+
 object Expression {
   class ExpressionEvaluationException(msg: String) extends U.CounterFeiterException(msg)
   
@@ -24,14 +26,21 @@ object Expression {
       }
   }
   
-  class BasicExpression[T](value: T)(implicit manifest: Manifest[T]) extends ElementaryExpression {
+  class BasicExpression[T](value: T)(implicit m: Manifest[T]) extends ElementaryExpression {
     override def extract[S](implicit goalManifest: Manifest[S]): Option[S] = {
-      if (goalManifest == manifest)
-	Some(value.asInstanceOf[S])
-      else if (goalManifest.erasure == classOf[String])
+      if (goalManifest == manifest[String]) {
 	Some(value.toString.asInstanceOf[S])
-      else
+      } else if (m.isInstanceOf[AnyValManifest[_]]) {
+	if (m == goalManifest) {
+	  Some(value.asInstanceOf[S])
+	} else {
+	  None
+	}
+      } else if (value.isInstanceOf[S]) {
+	Some(value.asInstanceOf[S])
+      } else {
 	None
+      }
     }
   }
   
@@ -68,43 +77,77 @@ object Expression {
 	throw except("Failed to convert %s to %s", name, manifest.erasure.toString)
   }
   
-  class BinaryOperatorFunction[R, S, T](override val name: String, val priority: Int, f: (R, S) => T)
+  abstract class BinaryOperatorFunction(override val name: String, val priority: Int)
   extends FunctionExpression {
     override def numberOfArgs = 2
-    override protected def execute(args: ElementaryExpression*)
-                                  (implicit tman: Manifest[T], rman: Manifest[R], sman: Manifest[S]) = 
-      new BasicExpression[T](f(args(0).extractOrThrow[R],args(1).extractOrThrow[S]))
   }
 
-  class UnaryOperatorFunction[R, T](override val name: String, f: R => T) extends FunctionExpression {
+  abstract class UnaryOperatorFunction(override val name: String) extends FunctionExpression {
     override def numberOfArgs = 1
-    override protected def execute(args: ElementaryExpression*)
-                                  (implicit tman: Manifest[T], rman: Manifest[R]) = 
-      new BasicExpression[T](f(args(0).extractOrThrow[R]))
   }
 
-  object MultiplyFunction extends BinaryOperatorFunction("*", 5, (a: Int, b: Int) =>  a * b)
-  object PlusFunction extends BinaryOperatorFunction("+", 5, (a: Int, b: Int) => a + b)
-  object MinusFunction extends BinaryOperatorFunction("-", 5, (a: Int, b: Int) => a - b)
-  object DivideFunction extends BinaryOperatorFunction("/", 5, (a: Int, b: Int) => a / b)
-  object ModulusFunction extends BinaryOperatorFunction("%", 5, (a: Int, b: Int) => a % b)
-  object AndFunction extends BinaryOperatorFunction("and", 3, (a: Boolean, b: Boolean) => a && b)
-  object OrFunction extends BinaryOperatorFunction("or", 2, (a: Boolean, b: Boolean) => a || b)
-  object XorFunction extends BinaryOperatorFunction("xor", 2, (a: Boolean, b: Boolean) => a ^ b)
-  object NotFunction extends UnaryOperatorFunction[Boolean, Boolean]("not", !_)
-  object UnaryMinusFunction extends UnaryOperatorFunction[Int, Int]("-", -_)
-  object EqualsFunction extends BinaryOperatorFunction[Any, Any, Boolean]("=", 1, _ == _)
-  object NotEqualsFunction extends BinaryOperatorFunction[Any, Any, Boolean]("!=", 1, _ != _)
+  object MultiplyFunction extends BinaryOperatorFunction("*", 5) {
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Int] * args(1).extractOrThrow[Int])
+  }
+  object PlusFunction extends BinaryOperatorFunction("+", 5) {
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Int] + args(1).extractOrThrow[Int])
+  }
+  object MinusFunction extends BinaryOperatorFunction("-", 5) { 
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Int] - args(1).extractOrThrow[Int])
+  }
+  object DivideFunction extends BinaryOperatorFunction("/", 5) { 
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Int] / args(1).extractOrThrow[Int])
+  }
+
+  object ModulusFunction extends BinaryOperatorFunction("%", 5) { 
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Int] % args(1).extractOrThrow[Int])
+  }
+  object AndFunction extends BinaryOperatorFunction("and", 3) {
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Boolean] && args(1).extractOrThrow[Boolean])
+  }
+  object OrFunction extends BinaryOperatorFunction("or", 2)  {
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Boolean] || args(1).extractOrThrow[Boolean])
+  }
+  object XorFunction extends BinaryOperatorFunction("xor", 2) {
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Boolean] ^ args(1).extractOrThrow[Boolean])
+  }
+
+  object EqualsFunction extends BinaryOperatorFunction("=", 1) {
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Any] == args(1).extractOrThrow[Any])
+  }
+  object NotEqualsFunction extends BinaryOperatorFunction("!=", 1) {
+     override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[Any] != args(1).extractOrThrow[Any])
+  }
+
+  object NotFunction extends UnaryOperatorFunction("not") {
+     override protected def execute(args: ElementaryExpression*) =
+       new BasicExpression(!args(0).extractOrThrow[Boolean])
+  }
+
+  object UnaryMinusFunction extends UnaryOperatorFunction("-") {
+     override protected def execute(args: ElementaryExpression*) =
+       new BasicExpression(-args(0).extractOrThrow[Int])
+  }
 
   val binaryOperators = List(MultiplyFunction, PlusFunction,   MinusFunction, 
 			     DivideFunction,   AndFunction,    OrFunction, 
 			     XorFunction,      EqualsFunction, NotEqualsFunction)
   val binaryOperatorMap = (binaryOperators map { op => op.name -> op })
-                          .toMap[String, BinaryOperatorFunction[_, _, _]]
+                          .toMap[String, BinaryOperatorFunction]
   
   val unaryOperators = List(NotFunction, UnaryMinusFunction)
   val unaryOperatorMap = (unaryOperators map { op => op.name -> op })
-                         .toMap[String, UnaryOperatorFunction[_, _]]
+                         .toMap[String, UnaryOperatorFunction]
 
   abstract class ComplexExpression extends BaseExpression { 
     override def isElementary = false
