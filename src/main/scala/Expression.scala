@@ -26,7 +26,14 @@ object Expression {
       }
   }
   
-  class BasicExpression[T](value: T)(implicit m: Manifest[T]) extends ElementaryExpression {
+  class BasicExpression[T](private val value: T)(implicit m: Manifest[T]) extends ElementaryExpression {
+    override def equals(that: Any) = {
+      that match { 
+	case _that: BasicExpression[_] => _that.value == value
+	case _ => false
+      }
+    }
+
     override def extract[S](implicit goalManifest: Manifest[S]): Option[S] = {
       if (goalManifest == manifest[String]) {
 	Some(value.toString.asInstanceOf[S])
@@ -90,11 +97,11 @@ object Expression {
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Int] * args(1).extractOrThrow[Int])
   }
-  object PlusFunction extends BinaryOperatorFunction("+", 5) {
+  object PlusFunction extends BinaryOperatorFunction("+", 4) {
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Int] + args(1).extractOrThrow[Int])
   }
-  object MinusFunction extends BinaryOperatorFunction("-", 5) { 
+  object MinusFunction extends BinaryOperatorFunction("-", 4) { 
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Int] - args(1).extractOrThrow[Int])
   }
@@ -107,26 +114,27 @@ object Expression {
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Int] % args(1).extractOrThrow[Int])
   }
-  object AndFunction extends BinaryOperatorFunction("and", 3) {
+  object AndFunction extends BinaryOperatorFunction("and", 2) {
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Boolean] && args(1).extractOrThrow[Boolean])
   }
-  object OrFunction extends BinaryOperatorFunction("or", 2)  {
+  object OrFunction extends BinaryOperatorFunction("or", 1)  {
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Boolean] || args(1).extractOrThrow[Boolean])
   }
-  object XorFunction extends BinaryOperatorFunction("xor", 2) {
+  object XorFunction extends BinaryOperatorFunction("xor", 1) {
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Boolean] ^ args(1).extractOrThrow[Boolean])
   }
 
-  object EqualsFunction extends BinaryOperatorFunction("=", 1) {
-    override protected def execute(args: ElementaryExpression*) =
-      new BasicExpression(args(0).extractOrThrow[Any] == args(1).extractOrThrow[Any])
+  object EqualsFunction extends BinaryOperatorFunction("=", 3) {
+    override protected def execute(args: ElementaryExpression*) = {
+      new BasicExpression(args(0) == args(1))
+    }
   }
-  object NotEqualsFunction extends BinaryOperatorFunction("!=", 1) {
+  object NotEqualsFunction extends BinaryOperatorFunction("!=", 3) {
      override protected def execute(args: ElementaryExpression*) =
-      new BasicExpression(args(0).extractOrThrow[Any] != args(1).extractOrThrow[Any])
+      new BasicExpression(args(0) != args(1))
   }
 
   object NotFunction extends UnaryOperatorFunction("not") {
@@ -153,7 +161,7 @@ object Expression {
     override def isElementary = false
   }
   
-  class ApplicationExpression(func: BaseExpression, args: BaseExpression*) extends ComplexExpression{
+  class ApplicationExpression(val func: BaseExpression, val args: BaseExpression*) extends ComplexExpression{
     override def eval(pad: Pad): ElementaryExpression = {
       func eval pad match {
 	case f: FunctionExpression => f(args map { _ eval pad } :_*)

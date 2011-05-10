@@ -17,11 +17,14 @@ object Parser extends RegexParsers {
   
   def stringExpression = string ^^ (new BasicExpression[String](_))
   def numberExpression = number ^^ (new BasicExpression[Int](_))
-
+  def booleanExpression: Parser[ElementaryExpression] = 
+    ("true(?!\\w)".r ^^^ (new BasicExpression[Boolean](true))) | 
+    ("false(?!\\w)".r ^^^ (new BasicExpression[Boolean](false)))
+  
   def operator: Parser[FunctionExpression] = binaryOperator | unaryOperator
   def binaryOperator: Parser[BinaryOperatorFunction] = 
-    "[-+*/]|==|(?:(?:and|or|xor)(?!\\w))".r ^^ (Expression.binaryOperatorMap(_))
-
+    "[-+*/=]|!=|(?:(?:and|or|xor)(?!\\w))".r ^^ (Expression.binaryOperatorMap(_))
+  
   def unaryOperator: Parser[UnaryOperatorFunction] = 
     "-|(?:not(?!\\w))".r ^^ (Expression.unaryOperatorMap(_))
 
@@ -45,12 +48,18 @@ object Parser extends RegexParsers {
 
   def linePart: Parser[LinePart] =
     (ws ~> rep(ws ~> unaryOperator <~ ws) ~ (ws ~> (
-      stringExpression | numberExpression | identifier | subexpression) <~ ws) ^^ {
+      stringExpression | numberExpression | booleanExpression | identifier | subexpression) <~ ws) ^^ {
       case lst ~ expr => Term(expr, lst) } 
-    ) | (binaryOperator ^^ (BinaryOperator(_)))
-  
+    )
+
+  def binaryExpression: Parser[List[LinePart]] = 
+    (linePart <~ ws) ~  rep(ws ~> binaryOperator ~ (ws ~> linePart)) ^^ { 
+      case lp0 ~ lst =>
+	lp0 :: ( lst flatMap { case op ~ lp => List(BinaryOperator(op) , lp)} )
+    }
+
   def expression: Parser[BaseExpression] = 
-    rep1(ws ~> linePart <~ ws) ^^ { parseLineParts(_) match {
+    (ws ~> binaryExpression <~ ws) ^^ { parseLineParts(_) match {
       case (t: Term) :: Nil => t.base
       case o => throw except("Expected list with one term, got: %s", o)()
     }
@@ -70,7 +79,7 @@ object Parser extends RegexParsers {
 	} else {
 	  parseLineParts(tail, op.op.priority) match {
 	    case (arg1: Term) :: tail => parseLineParts(
-	      Term(new ApplicationExpression(op.op, arg0.base, arg1.base)) :: tail)
+	      Term(new ApplicationExpression(op.op, arg0.base, arg1.base)) :: tail, priority)
 	    case o => throw except("Internal error, excepted list with term as start, got: %s", o)()
 	  }
 	}

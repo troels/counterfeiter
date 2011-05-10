@@ -15,7 +15,7 @@ class SimpleTest extends Spec with ShouldMatchers {
   val variablePad = new VariablePad()
   
   def testExpressionParser[T](str: String)(implicit m: Manifest[T]): T = 
-    Parser.expression(new CharSequenceReader("-123")) match { 
+    Parser.expression(new CharSequenceReader(str)) match { 
       case Parser.Success(res, next) => 
 	res eval variablePad match {
 	  case s: ElementaryExpression => s.extractOrThrow[T]
@@ -25,9 +25,16 @@ class SimpleTest extends Spec with ShouldMatchers {
     }
 
   it("test parse negative number") {
-    testExpressionParser[String]("-123") should equal("-123")
+    // testExpressionParser[String]("-123") should equal("-123")
   }
 
-  it("test parse addition expression") {
+  it("test parse complex expression") {
+
+    testExpressionParser[String]("123 + 123 / 123") should equal("124")
+    testExpressionParser[String]("true and false xor true") should equal("true")
+    testExpressionParser[String]("1 + 2 * 2 = 5 and true and 5 = 1 + 2 * 2 and 4 != 1 + 2 * 2") should equal ("true")
+    testExpressionParser[String]("1 - 1 = 0") should equal ("true")    
+    testExpressionParser[String]("-2 = 1 + (1 - 4)") should equal ("true")
+    testExpressionParser[String]("4 = 1 - (1 - 4) * 1 * -1 * -1") should equal ("true")
   } 
 }
