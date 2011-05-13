@@ -51,6 +51,48 @@ object Expression {
     }
   }
   
+  class ElementaryMapExpression(expr: (String, ElementaryExpression)*) extends ElementaryExpression {
+    override def extract[T](implicit m: Manifest[T]): Option[T] = 
+      if (m == manifest[Map[String, ElementaryExpression]]) { 
+	Some(map.asInstanceOf[T])
+      } else if (m == manifest[String]) { 
+	Some("{%s}".format(expr map { 
+	  case (k, v) => "\"%s\": %s".format(k, v.extractOrThrow[String]) } mkString ", " ).asInstanceOf[T])
+      } else {
+	None
+      }
+		      
+    def map: Map[String, ElementaryExpression] = expr toMap
+    def lookup(str: String) = map(str)
+  }
+
+  class MapExpression(expr: (BaseExpression, BaseExpression)*) extends BaseExpression {
+    override def isElementary = false
+    override def eval(pad: Pad) = 
+      new ElementaryMapExpression(expr map { 
+	case (k, v) => (k eval pad).extractOrThrow[String] -> (v eval pad) } :_*)
+  }  
+  
+  class ElementaryListExpression(expr: ElementaryExpression*) extends ElementaryExpression {
+    override def extract[T](implicit m: Manifest[T]): Option[T] = 
+      if (m == manifest[List[ElementaryExpression]]) { 
+	Some(toList.asInstanceOf[T])
+      } else if (m == manifest[String]) { 
+	Some("[%s]".format(expr map {  _.extractOrThrow[String] } mkString ", ").asInstanceOf[T])
+      } else {
+	None
+      }
+      
+    def toList: List[ElementaryExpression] = expr toList
+  }
+
+  class ListExpression(expr: BaseExpression*) extends BaseExpression{ 
+    override def isElementary = false
+    override def eval(pad: Pad) = new ElementaryListExpression(expr map { _ eval pad } :_*)
+  }
+      
+      
+    
   class CurriedFunctionExpression(fn: FunctionExpression, args: ElementaryExpression*) extends FunctionExpression { 
     assert (fn.numberOfArgs >= args.size)
 
@@ -64,6 +106,7 @@ object Expression {
   abstract class FunctionExpression extends ElementaryExpression {
     def name: String
     def numberOfArgs: Int
+
     protected def execute(args: ElementaryExpression*): ElementaryExpression
 
     def apply(args: ElementaryExpression*): ElementaryExpression = 
@@ -177,6 +220,4 @@ object Expression {
 	case None => throw except("%s is undefined" format variable)
       }
   }
-
 }
- 

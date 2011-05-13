@@ -3,7 +3,7 @@ package org.bifrost.counterfeiter
 import scala.util.parsing.combinator.{ Parsers, RegexParsers, ImplicitConversions }
 import scala.util.parsing.input.CharSequenceReader
 
-object Parser extends RegexParsers { 
+object ExpressionParser extends RegexParsers { 
   import Expression._
 
   class CounterfeiterParserException(msg: String) extends U.CounterFeiterException(msg)
@@ -12,7 +12,10 @@ object Parser extends RegexParsers {
     () => new CounterfeiterParserException(format.format(args :_*))
 
   def ws = "[ \r\t\n]*".r
-  def string: Parser[String] = '"' ~> "(?:[^\"\\]+|\\.)+".r <~ '"'
+  def string: Parser[String] = ('"' ~> "(?:[^\"\\\\]+|\\\\.)+".r <~ '"') ^^ { 
+    str => str.replaceAll("\\\\(.)", "$1")
+  }
+
   def number: Parser[Int] = "\\d+".r ^^ (_ toInt)
   
   def stringExpression = string ^^ (new BasicExpression[String](_))
@@ -21,7 +24,16 @@ object Parser extends RegexParsers {
     ("true(?!\\w)".r ^^^ (new BasicExpression[Boolean](true))) | 
     ("false(?!\\w)".r ^^^ (new BasicExpression[Boolean](false)))
   
+  def listExpression: Parser[ListExpression] = 
+    ws ~> "[" ~> repsep(ws ~> expression <~ ws, ",") <~ "]" <~ ws ^^ { lst =>
+      new ListExpression(lst :_*) }
+  
+  def mapExpression: Parser[MapExpression] = 
+    ws ~> "{" ~> repsep((ws ~> expression <~ ws <~ ':' <~ ws) ~ (expression <~ ws), ',') <~ "}" <~ ws ^^ {
+      exprs => new MapExpression(exprs map { case k ~ v => k -> v } :_* ) }
+
   def operator: Parser[FunctionExpression] = binaryOperator | unaryOperator
+
   def binaryOperator: Parser[BinaryOperatorFunction] = 
     "[-+*/=]|!=|(?:(?:and|or|xor)(?!\\w))".r ^^ (Expression.binaryOperatorMap(_))
   
@@ -48,7 +60,8 @@ object Parser extends RegexParsers {
 
   def linePart: Parser[LinePart] =
     (ws ~> rep(ws ~> unaryOperator <~ ws) ~ (ws ~> (
-      stringExpression | numberExpression | booleanExpression | identifier | subexpression) <~ ws) ^^ {
+      functionCall | stringExpression | numberExpression | booleanExpression | 
+      listExpression | mapExpression | identifier | subexpression) <~ ws) ^^ {
       case lst ~ expr => Term(expr, lst) } 
     )
 
