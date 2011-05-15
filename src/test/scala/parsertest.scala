@@ -8,9 +8,8 @@ import org.junit.runner.RunWith
 
 @RunWith(classOf[JUnitRunner])
 class SimpleTest extends Spec with ShouldMatchers { 
-  import org.bifrost.counterfeiter.{ExpressionParser, VariablePad, Expression, BasicFunctions}
+  import org.bifrost.counterfeiter.{ExpressionParser, VariablePad, Expression, BasicFunctions, HtmlTemplateParser}
   import Expression.ElementaryExpression
-  
   import scala.util.parsing.input.CharSequenceReader
   
   val variablePad = BasicFunctions.standardPad
@@ -25,6 +24,13 @@ class SimpleTest extends Spec with ShouldMatchers {
       case o => fail(o.toString)
     }
 
+  def testHtmlTemplateParser[T](in: String): String = 
+    HtmlTemplateParser.htmlElem("")(new CharSequenceReader(in)) match {
+      case HtmlTemplateParser.Success(res, next) => 
+	res eval variablePad
+      case o => fail(o.toString)
+    }
+	  
   it("test parse negative number") {
     testExpressionParser[String]("-123") should equal("-123")
   }
@@ -57,5 +63,42 @@ class SimpleTest extends Spec with ShouldMatchers {
   it("test map") { 
     testExpressionParser[String](""" {1: 2, "abc": 5, 2 + 2: 9  } """) should equal (
       """{"1": 2, "abc": 5, "4": 9}""")
+  }
+
+  it("test primitive templates") {
+    testHtmlTemplateParser(
+"""#hello h1(style="display: none")
+ | HI THERE
+""") should equal ("""<div id="hello"><h1 style="display: none">HI THERE</h1></div>""")
+  }
+
+  it("test expression") { 
+    testHtmlTemplateParser(
+""".hello_class.t2 h1
+ | Hi there { 1 + 2 }{1+2}{332+4}
+ | Where am I?
+""") should equal ("""<div class="hello_class t2"><h1>Hi there 33336
+Where am I?</h1></div>""")
+  }
+
+  it("test if") {
+   testHtmlTemplateParser(
+"""#a
+ + if 1 + 2 = 4
+  h1
+   | hello there
+   span
+    | go and die
+   | hi there
+ + else
+  div
+   | goodbye there
+   span
+    | go and die
+   | hi there 
+""") should equal ("""<div id="a"><div>goodbye there
+<span>go and die</span>
+hi there </div></div>""")
+
   }
 }

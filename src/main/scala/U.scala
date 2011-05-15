@@ -26,4 +26,25 @@ object U {
 	 }
     }
   }
+
+  def intersperse[T, S <: T](lst: List[T], interElem: S): List[T] = {
+    if ((lst isEmpty) || 1 == (lst size)) {
+      lst
+    } else {
+      val lstr = (lst reverse)
+      (lstr.tail foldLeft (List[T](lstr.head))) { 
+	(newLst, elem) => elem :: interElem :: newLst
+      }
+    }
+  }
+  
+  class ListWrapper[T](lst: List[T]) {
+    def intersperse[S <: T](interElem: S): List[T] = 
+      U.intersperse(lst, interElem)
+  }
+
+  object Implicits { 
+    implicit def list2listWrapper[T](lst: List[T]): ListWrapper[T] = new ListWrapper[T](lst)
+  }
+    
 }

@@ -24,14 +24,20 @@ object HtmlOutput {
 	case (k, v) => "%s=\"%s\"".format(k, (v eval pad).extractOrThrow[String])
       } mkString " "
 
-    override def eval(pad: Pad): String = 
+    override def eval(pad: Pad): String = {
+      val attribs = outputAttribs(pad)
+      val attribsOut = if (attribs isEmpty) "" else " " + attribs
       if (content isEmpty) 
-	"<%s %s/>".format(tag, outputAttribs(pad))
+	"<%s%s/>".format(tag, attribsOut)
       else 
-	"<%s %s>%s</%s>".format(tag, outputAttribs(pad), content map ( _ eval pad ) mkString "\n", tag)
+	"<%s%s>%s</%s>".format(tag, attribsOut, content map ( _ eval pad ) mkString "\n", tag)
+    }
 
     def addContent(content: BaseElem*): Tag = 
       new Tag(tag, attributes, this.content ++ content)
+    
+    override def toString = 
+      "Tag: %s, %s: [\n%s\n]".format(tag, attributes, content map { _.toString } mkString "\n")
   }
 
   class Expression(expression: BaseExpression) extends BaseElem { 
@@ -39,13 +45,24 @@ object HtmlOutput {
   }
   
   class ElemList(elems: BaseElem*) extends BaseElem {
-    override def eval(pad: Pad) = elems map ( _ eval pad) mkString "\n"
+    override def eval(pad: Pad) = 
+      elems map ( _ eval pad) mkString ""
+    
+    override def toString = "ElemList:[\n%s\n]".format(elems map { _.toString } mkString "\n")
   }
-  
+
   class IfElem(clauses: (BaseExpression, BaseElem)*) extends BaseElem{
     override def eval(pad: Pad) = 
       clauses find { case (cond, _) => (cond eval pad).extractOrThrow[Boolean] } map {
 	case (_, elem) => elem eval pad } getOrElse ""
+  }
+
+  class ForElem(variable: String, range: BaseExpression, clauses: BaseElem) extends BaseElem{
+    override def eval(pad: Pad) = {
+      (range eval pad).extractOrThrow[List[ElementaryExpression]] map { 
+	i: ElementaryExpression => clauses eval (pad newPad Map(variable -> i))
+      } mkString ""
+    }
   }
 
   class HtmlTemplate(name: String, argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
@@ -80,4 +97,3 @@ object HtmlOutput {
       renderTemplate(positionalArguments, Map())
   }
 }
-

@@ -6,12 +6,14 @@ import Expression._
 
 object ExpressionParser extends RegexParsers { 
 
+  override protected val whiteSpace = "".r
+
   class CounterfeiterParserException(msg: String) extends U.CounterFeiterException(msg)
   
   def except(format: String, args: Any*) = 
     () => new CounterfeiterParserException(format.format(args :_*))
 
-  def ws = "[ \r\t\n]*".r
+  def ws = "[ \t]*".r
   def string: Parser[String] = ('"' ~> "(?:[^\"\\\\]+|\\\\.)+".r <~ '"') ^^ { 
     str => str.replaceAll("\\\\(.)", "$1")
   }
@@ -61,18 +63,18 @@ object ExpressionParser extends RegexParsers {
   def linePart: Parser[LinePart] =
     (ws ~> rep(ws ~> unaryOperator <~ ws) ~ (ws ~> (
       functionCall | stringExpression | numberExpression | booleanExpression | 
-      listExpression | mapExpression | identifier | subexpression) <~ ws) ^^ {
+      listExpression | mapExpression | identifier | subexpression)) ^^ {
       case lst ~ expr => Term(expr, lst) } 
     )
 
   def binaryExpression: Parser[List[LinePart]] = 
-    (linePart <~ ws) ~  rep(ws ~> binaryOperator ~ (ws ~> linePart)) ^^ { 
+    linePart ~  rep(ws ~> binaryOperator ~ (ws ~> linePart)) ^^ { 
       case lp0 ~ lst =>
 	lp0 :: ( lst flatMap { case op ~ lp => List(BinaryOperator(op) , lp)} )
     }
 
   def expression: Parser[BaseExpression] = 
-    (ws ~> binaryExpression <~ ws) ^^ { parseLineParts(_) match {
+    (ws ~> binaryExpression) ^^ { parseLineParts(_) match {
       case (t: Term) :: Nil => t.base
       case o => throw except("Expected list with one term, got: %s", o)()
     }
