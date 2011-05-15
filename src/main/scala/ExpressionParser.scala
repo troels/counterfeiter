@@ -2,9 +2,9 @@ package org.bifrost.counterfeiter
 
 import scala.util.parsing.combinator.{ Parsers, RegexParsers, ImplicitConversions }
 import scala.util.parsing.input.CharSequenceReader
+import Expression._
 
 object ExpressionParser extends RegexParsers { 
-  import Expression._
 
   class CounterfeiterParserException(msg: String) extends U.CounterFeiterException(msg)
   

@@ -12,40 +12,26 @@ object HtmlOutput {
   
   def except(format: String, args: Any*) =
     new HtmlOutputException(format.format(args :_*))
-			    
-  implicit def string2text(str: String): Text = Text(str)
-  implicit def text2string(text: Text): String = text.text
   
-  case class Text(text: String) extends BaseElem {
+  class Text(text: String) extends BaseElem {
     override def eval(pad: Pad): String = text
   }
-  
-  object AttributeList { 
-    def apply(attribs: (String, BaseExpression)*) = 
-      new AttributeList(attribs :_*)
-    
-    def empty = AttributeList()
-  }
 
-  class AttributeList(attribs: (String, BaseExpression)*) {
-    assert (attribs forall { case (k, _) => U.isWord(k) } )
-      
-    val attributes = ListMap[String, BaseExpression](
-      attribs map { case (k, v) => k.toLowerCase -> v } :_*)
-
-    def eval(pad: Pad): String = 
-      attributes map { 
-	case (k, v) => "%s=\"%s\"".format(k, v eval pad toString)
-      } mkString " "
-  }
-
-  class Tag(tag: String="div", attributes: AttributeList=AttributeList(), content: List[BaseElem]=List()) 
+  class Tag(tag: String, attributes: Map[String, BaseExpression], content: List[BaseElem]=List()) 
   extends BaseElem {
+    def outputAttribs(pad: Pad): String = 
+      attributes map { 
+	case (k, v) => "%s=\"%s\"".format(k, (v eval pad).extractOrThrow[String])
+      } mkString " "
+
     override def eval(pad: Pad): String = 
       if (content isEmpty) 
-	"<%s %s/>".format(tag, attributes eval pad)
+	"<%s %s/>".format(tag, outputAttribs(pad))
       else 
-	"<%s %s>%s</%s>".format(tag, attributes eval pad, content map ( _ eval pad ) mkString "\n", tag)
+	"<%s %s>%s</%s>".format(tag, outputAttribs(pad), content map ( _ eval pad ) mkString "\n", tag)
+
+    def addContent(content: BaseElem*): Tag = 
+      new Tag(tag, attributes, this.content ++ content)
   }
 
   class Expression(expression: BaseExpression) extends BaseElem { 
@@ -55,7 +41,13 @@ object HtmlOutput {
   class ElemList(elems: BaseElem*) extends BaseElem {
     override def eval(pad: Pad) = elems map ( _ eval pad) mkString "\n"
   }
-    
+  
+  class IfElem(clauses: (BaseExpression, BaseElem)*) extends BaseElem{
+    override def eval(pad: Pad) = 
+      clauses find { case (cond, _) => (cond eval pad).extractOrThrow[Boolean] } map {
+	case (_, elem) => elem eval pad } getOrElse ""
+  }
+
   class HtmlTemplate(name: String, argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
 		     content: BaseElem) {
     def renderTemplate(namedArguments: Map[String, ElementaryExpression]): String = {

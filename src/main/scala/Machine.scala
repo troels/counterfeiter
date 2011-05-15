@@ -17,7 +17,5 @@ class VariablePad(vars: Map[String, ElementaryExpression] = Map(), parentPad: Op
 
 class Machine { 
   private val templates = new HashMap[String, HtmlOutput.BaseElem]
-  
-//  private val globalPad = new 
 }
 

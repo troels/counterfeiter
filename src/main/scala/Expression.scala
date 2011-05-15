@@ -220,4 +220,7 @@ object Expression {
 	case None => throw except("%s is undefined" format variable)
       }
   }
+
+  def trueExpression = new BasicExpression[Boolean](true)
+  def falseExpression = new BasicExpression[Boolean](false)
 }
