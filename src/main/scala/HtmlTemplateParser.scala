@@ -56,7 +56,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
      opt('(' ~> ws ~> tagAttributeList <~ ws <~ ')') ^^ assembleTag
 
   def tagElem(indent: String): Parser[BaseElem] = 
-    (rep1sep(tagPart, forcedWsNoNl) <~ wsNoNl <~ nl) ~ newLine(indent, parseElemsOnLevel) ^^ {
+    (rep1sep(tagPart, forcedWsNoNl) <~ wsNoNl <~ nl) ~ newLine(indent, parseElemsOnLevel, EmptyElem) ^^ {
       case _tagLst ~ content => {
 	val tagLst = _tagLst reverse
 	
@@ -72,11 +72,11 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def htmlElem(indent: String): Parser[BaseElem] =
     tagElem(indent) | textElem(indent) | ifElem(indent) | forElem(indent)
 
-  def newLine[T](indent: String, cont: String => Parser[T]): Parser[T] = 
+  def newLine[T](indent: String, cont: String => Parser[T], alt: T): Parser[T] = 
     Parser[T] { in =>
       guard(parseLinePrefix(indent))(in) match {
 	case Success(res, next) => cont(res)(next)
-	case ns: NoSuccess => ns 
+	case ns: NoSuccess => Success(alt, in)
       }
     }
   
@@ -86,7 +86,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def ifElem(indent: String): Parser[BaseElem] = {
     def ifClause(ifPhrase: String, ind: String, expr: Option[BaseExpression] = None) = {
       (ind ~ "+" ~> wsNoNl ~> ifPhrase ~> wsNoNl ~> (expr map (success(_)) getOrElse expression) <~ wsNoNl <~ nl) ~ 
-       newLine(indent, parseElemsOnLevel) ^^ { case expr ~ cons => {
+       newLine(indent, parseElemsOnLevel, EmptyElem) ^^ { case expr ~ cons => {
 	 (expr, cons) 
        } } }
     (ifClause("if", "") ~ rep(ifClause("elsif", indent)) ~ 
@@ -104,7 +104,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def forElem(indent: String): Parser[BaseElem] = 
     ("+" ~> wsNoNl ~> "for" ~> wsNoNl ~> "[a-zA-Z_][\\w_]*".r <~ wsNoNl <~ "in" <~ wsNoNl) ~
     (expression <~ wsNoNl <~ nl) ~
-    newLine(indent, parseElemsOnLevel) ^^ {
+    newLine(indent, parseElemsOnLevel, EmptyElem) ^^ {
 	case variable ~ expr ~ clause => new ForElem(variable, expr, clause)
       }
 }

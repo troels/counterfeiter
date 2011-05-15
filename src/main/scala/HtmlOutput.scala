@@ -27,10 +27,11 @@ object HtmlOutput {
     override def eval(pad: Pad): String = {
       val attribs = outputAttribs(pad)
       val attribsOut = if (attribs isEmpty) "" else " " + attribs
-      if (content isEmpty) 
+      val evaledContent = content map ( _ eval pad ) mkString "\n"
+      if (evaledContent isEmpty) 
 	"<%s%s/>".format(tag, attribsOut)
       else 
-	"<%s%s>%s</%s>".format(tag, attribsOut, content map ( _ eval pad ) mkString "\n", tag)
+	"<%s%s>%s</%s>".format(tag, attribsOut, evaledContent, tag)
     }
 
     def addContent(content: BaseElem*): Tag = 
@@ -38,6 +39,10 @@ object HtmlOutput {
     
     override def toString = 
       "Tag: %s, %s: [\n%s\n]".format(tag, attributes, content map { _.toString } mkString "\n")
+  }
+
+  object EmptyElem extends BaseElem { 
+    override def eval(pad: Pad): String = ""
   }
 
   class Expression(expression: BaseExpression) extends BaseElem { 

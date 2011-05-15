@@ -72,6 +72,14 @@ class SimpleTest extends Spec with ShouldMatchers {
 """) should equal ("""<div id="hello"><h1 style="display: none">HI THERE</h1></div>""")
   }
 
+  it("test tag in tag") {
+    testHtmlTemplateParser(
+"""a
+ b
+  c
+""") should equal ("<a><b><c/></b></a>")
+  }
+
   it("test expression") { 
     testHtmlTemplateParser(
 """.hello_class.t2 h1
@@ -99,6 +107,12 @@ Where am I?</h1></div>""")
 """) should equal ("""<div id="a"><div>goodbye there
 <span>go and die</span>
 hi there </div></div>""")
-
   }
+
+  it("test for") {
+    testHtmlTemplateParser(
+"""+ for a in [1,2,3,"a",  5]
+ b(id={a})
+  | {a}
+""") should equal ("""<b id="1">1</b><b id="2">2</b><b id="3">3</b><b id="a">a</b><b id="5">5</b>""") }
 }
