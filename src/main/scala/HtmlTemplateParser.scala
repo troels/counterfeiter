@@ -116,7 +116,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def parseArg(indent: String): Parser[(String, BaseElem)] = 
     (identifier <~ ':' <~ wsNoNl <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ tuplify
       
-  def parseArgsOnLevel(indent: String): Parser[List[(String, BaseElem)]] = rep(parseArg(indent)) 
+  def parseArgsOnLevel(indent: String): Parser[List[(String, BaseElem)]] = rep(indent ~> parseArg(indent)) 
 
   def assembleTemplate(name: String, firstArgs: List[(String, Option[BaseExpression])], 
 		       secondArgs: List[(String, Option[BaseExpression])], body: BaseElem) = {

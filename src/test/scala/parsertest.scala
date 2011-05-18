@@ -141,4 +141,22 @@ hi there </div></div>""")
 	  "d" -> new Expression.BasicExpression[String]("Goodbye world"))) should equal ("Hello world")
 			    
   }
+
+  it("test default arguments") { 
+    val tmpl = testHtmlTemplateDeclarationParser(
+"""a b={3 + 3} c={2} d
+ e:
+  span h
+   | Hello there
+ | Hello there {e} {b} {d}
+""")
+
+    tmpl.renderTemplate(
+      Map("d" -> new Expression.BasicExpression[String]("hello"))) should equal("""Hello there <span><h>Hello there</h></span> 6 hello""")
+
+    tmpl.renderTemplate(
+      Map("d" -> new Expression.BasicExpression[String]("hi"), 
+	  "e" -> new Expression.BasicExpression[String]("Something different"))
+     ) should equal ("""Hello there Something different 6 hi""")
+  }
 }
