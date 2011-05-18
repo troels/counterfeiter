@@ -13,16 +13,15 @@ object BasicFunctions {
   def argumentDeconstructor[R, S, T](f: (R, S) => T)(implicit mr: Manifest[R], ms: Manifest[S], mt: Manifest[T]) = 
     {
       def g(args: ElementaryExpression*) = f(args(0).extractOrThrow[R], args(1).extractOrThrow[S])
-      g _ 
+      g _
     }
 
   def argumentDeconstructor[R, S, T, U](f: (R, S, T) => U)
-                                     (implicit mr: Manifest[R], ms: Manifest[S], mt: Manifest[T], mu: Manifest[U]):
-    (ElementaryExpression*) => U =
-  {
-    def g(args:  ElementaryExpression*) = f(
-      args(0).extractOrThrow[R], args(1).extractOrThrow[S], args(2).extractOrThrow[T])
-    g
+                                       (implicit mr: Manifest[R], ms: Manifest[S], mt: Manifest[T], mu: Manifest[U]):
+    (ElementaryExpression*) => U = {
+    def g(args:  ElementaryExpression*) = 
+      f(args(0).extractOrThrow[R], args(1).extractOrThrow[S], args(2).extractOrThrow[T])
+    g _
   }
 
   
@@ -34,7 +33,8 @@ object BasicFunctions {
 	val end = math.min(start + len, strLen)
 	new BasicExpression[String](str substring (start, end))
       }
-    } )
+    } 
+  )
 					     
   
   val functionList = List(substring)

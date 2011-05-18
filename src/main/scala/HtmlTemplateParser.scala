@@ -2,6 +2,7 @@ package org.bifrost.counterfeiter
 
 import scala.util.parsing.combinator.{ Parsers, RegexParsers, ImplicitConversions }
 import scala.util.parsing.input.CharSequenceReader
+import scala.collection.immutable.ListMap
 
 import HtmlOutput._
 import Expression.{BaseExpression, BasicExpression}
@@ -56,7 +57,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
      opt('(' ~> ws ~> tagAttributeList <~ ws <~ ')') ^^ assembleTag
 
   def tagElem(indent: String): Parser[BaseElem] = 
-    (rep1sep(tagPart, forcedWsNoNl) <~ wsNoNl <~ nl) ~ newLine(indent, parseElemsOnLevel, EmptyElem) ^^ {
+    (rep1sep(tagPart, forcedWsNoNl) <~ wsNoNl <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ {
       case _tagLst ~ content => {
 	val tagLst = _tagLst reverse
 	
@@ -72,7 +73,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def htmlElem(indent: String): Parser[BaseElem] =
     tagElem(indent) | textElem(indent) | ifElem(indent) | forElem(indent)
 
-  def newLine[T](indent: String, cont: String => Parser[T], alt: T): Parser[T] = 
+  def newIndent[T](indent: String, cont: String => Parser[T], alt: T): Parser[T] = 
     Parser[T] { in =>
       guard(parseLinePrefix(indent))(in) match {
 	case Success(res, next) => cont(res)(next)
@@ -86,7 +87,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def ifElem(indent: String): Parser[BaseElem] = {
     def ifClause(ifPhrase: String, ind: String, expr: Option[BaseExpression] = None) = {
       (ind ~ "+" ~> wsNoNl ~> ifPhrase ~> wsNoNl ~> (expr map (success(_)) getOrElse expression) <~ wsNoNl <~ nl) ~ 
-       newLine(indent, parseElemsOnLevel, EmptyElem) ^^ { case expr ~ cons => {
+       newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ { case expr ~ cons => {
 	 (expr, cons) 
        } } }
     (ifClause("if", "") ~ rep(ifClause("elsif", indent)) ~ 
@@ -104,7 +105,29 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def forElem(indent: String): Parser[BaseElem] = 
     ("+" ~> wsNoNl ~> "for" ~> wsNoNl ~> "[a-zA-Z_][\\w_]*".r <~ wsNoNl <~ "in" <~ wsNoNl) ~
     (expression <~ wsNoNl <~ nl) ~
-    newLine(indent, parseElemsOnLevel, EmptyElem) ^^ {
+    newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ {
 	case variable ~ expr ~ clause => new ForElem(variable, expr, clause)
-      }
+    }
+  
+  def identifier = "[a-zA-Z_][-\\w]*".r
+
+  def tuplify[A,B](v: A ~ B) = (v._1 -> v._2)
+
+  def parseArg(indent: String): Parser[(String, BaseElem)] = 
+    (identifier <~ ':' <~ wsNoNl <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ tuplify
+      
+  def parseArgsOnLevel(indent: String): Parser[List[(String, BaseElem)]] = rep(parseArg(indent)) 
+
+  def assembleTemplate(name: String, firstArgs: List[(String, Option[BaseExpression])], 
+		       secondArgs: List[(String, Option[BaseExpression])], body: BaseElem) = {
+    val args = ListMap(firstArgs ++ secondArgs map { case (k, v) => (k -> (v map { _ eval EmptyPad })) } :_*)
+    new HtmlTemplate(name, args, body)
+  }
+
+  def templateDeclaration: Parser[HtmlTemplate] = 
+    (identifier ~ rep(wsNoNl ~> identifier ~ 
+		      opt(wsNoNl ~> '=' ~> wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ^^ tuplify) 
+     <~ nl) ~ (newIndent("", parseArgsOnLevel, List()) ^^ { 
+      lst => lst map { case (k, v) => k -> Some(new Expression.BaseElemExpression(v)) } } ) ~ 
+       newIndent("", parseElemsOnLevel, EmptyElem) ^^ assembleTemplate
 }

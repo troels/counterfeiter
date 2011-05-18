@@ -220,6 +220,10 @@ object Expression {
 	case None => throw except("%s is undefined" format variable)
       }
   }
+  
+  class BaseElemExpression(out: HtmlOutput.BaseElem) extends ComplexExpression { 
+    override def eval(pad: Pad): ElementaryExpression = new BasicExpression(out eval pad)
+  }
 
   def trueExpression = new BasicExpression[Boolean](true)
   def falseExpression = new BasicExpression[Boolean](false)

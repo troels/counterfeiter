@@ -73,7 +73,7 @@ object HtmlOutput {
   class HtmlTemplate(name: String, argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
 		     content: BaseElem) {
     def renderTemplate(namedArguments: Map[String, ElementaryExpression]): String = {
-      val allArguments: Map[String, ElementaryExpression] = argumentTemplate map {
+      val allArguments = argumentTemplate map {
 	case (name, default) => 
 	  namedArguments get name orElse default match {
 	    case Some(value) => (name -> value)

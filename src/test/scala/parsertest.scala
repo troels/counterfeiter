@@ -8,7 +8,8 @@ import org.junit.runner.RunWith
 
 @RunWith(classOf[JUnitRunner])
 class SimpleTest extends Spec with ShouldMatchers { 
-  import org.bifrost.counterfeiter.{ExpressionParser, VariablePad, Expression, BasicFunctions, HtmlTemplateParser}
+  import org.bifrost.counterfeiter.{ExpressionParser, VariablePad, Expression,  HtmlOutput,
+				    BasicFunctions, HtmlTemplateParser}
   import Expression.ElementaryExpression
   import scala.util.parsing.input.CharSequenceReader
   
@@ -28,6 +29,12 @@ class SimpleTest extends Spec with ShouldMatchers {
     HtmlTemplateParser.htmlElem("")(new CharSequenceReader(in)) match {
       case HtmlTemplateParser.Success(res, next) => 
 	res eval variablePad
+      case o => fail(o.toString)
+    }
+
+  def testHtmlTemplateDeclarationParser[T](in: String): HtmlOutput.HtmlTemplate = 
+    HtmlTemplateParser.templateDeclaration(new CharSequenceReader(in)) match {
+      case HtmlTemplateParser.Success(res, next) => res
       case o => fail(o.toString)
     }
 	  
@@ -115,4 +122,23 @@ hi there </div></div>""")
  b(id={a})
   | {a}
 """) should equal ("""<b id="1">1</b><b id="2">2</b><b id="3">3</b><b id="a">a</b><b id="5">5</b>""") }
+
+  it("test parse template") { 
+    val tmpl = testHtmlTemplateDeclarationParser(
+      """a b c d
+ + if b
+  | {c}
+ + else
+  | {d}
+""")
+
+
+    tmpl.renderTemplate(List(
+      Expression.falseExpression, Expression.trueExpression, Expression.falseExpression)) should equal ("false")
+
+    tmpl.renderTemplate(List(Expression.trueExpression),
+      Map("c" -> new Expression.BasicExpression[String]("Hello world"),
+	  "d" -> new Expression.BasicExpression[String]("Goodbye world"))) should equal ("Hello world")
+			    
+  }
 }
