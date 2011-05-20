@@ -69,6 +69,19 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
       }
     }
   
+  def namedArgs: Parser[(String, BaseExpression)] = 
+    (wsNoNl ~> identifier <~ wsNoNl <~ '=') ~ (wsNoNl ~> '{' ~> expression <~ '}') ^^ tuplify
+
+  def templateCallElem(indent: String): Parser[BaseElem] = 
+    ('-' ~> wsNoNl ~> identifier ~ rep(wsNoNl ~> expression) ~ rep(namedArgs) <~ wsNoNl <~ nl) ~ 
+    newIndent(indent, parseArgsOnLevel, List()) ^^ { 
+      case tmplName ~ posArgs ~ simpleNamedArgs ~ involvedNamedArgs => 
+	new TemplateCall(tmplName, posArgs, 
+			 simpleNamedArgs ++
+			 (involvedNamedArgs map { case (id, v) => id -> new Expression.BaseElemExpression(v) }) toMap)
+    }
+  
+    
   def parseLinePrefix(indent: String): Parser[String] = 
     (indent ~ forcedWs) ^^ { case a ~ b => a + b }
 

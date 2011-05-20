@@ -70,7 +70,7 @@ object HtmlOutput {
     }
   }
 
-  class CallTemplate(templateName: String, positionalArguments: List[BaseExpression], 
+  class TemplateCall(templateName: String, positionalArguments: List[BaseExpression], 
 		     namedArguments: Map[String, BaseExpression]) extends BaseElem {
     override def eval(m: Machine) = {
       m.renderTemplate(templateName, positionalArguments map { _ eval m },

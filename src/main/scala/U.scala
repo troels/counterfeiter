@@ -46,5 +46,4 @@ object U {
   object Implicits { 
     implicit def list2listWrapper[T](lst: List[T]): ListWrapper[T] = new ListWrapper[T](lst)
   }
-    
 }
