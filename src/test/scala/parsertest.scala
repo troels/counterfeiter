@@ -41,9 +41,10 @@ class SimpleTest extends Spec with ShouldMatchers {
   }
 
   it("test parse complex expression") {
-
     testExpressionParser[String]("123 + 123 / 123") should equal("124")
     testExpressionParser[String]("true and false xor true") should equal("true")
+    testExpressionParser[String]("not true and true") should equal("false")
+    testExpressionParser[String]("true and not true") should equal("false")
     testExpressionParser[String]("1 + 2 * 2 = 5 and true and 5 = 1 + 2 * 2 and 4 != 1 + 2 * 2") should equal ("true")
     testExpressionParser[String]("1 - 1 = 0") should equal ("true")    
     testExpressionParser[String]("-2 = 1 + (1 - 4)") should equal ("true")
@@ -57,8 +58,8 @@ class SimpleTest extends Spec with ShouldMatchers {
   }
     
   it("test basic functions") { 
-    testExpressionParser[String](""" substring("123", 1, 2) = "23" """) should equal ("true")
-    testExpressionParser[String](""" substring(1 + 1, 0, 1) = "2" """) should equal ("true")
+    testExpressionParser[String](""" substring "123" 1 2 = "23" """) should equal ("true")
+    testExpressionParser[String](""" substring (1 + 1) 0 1 = "2" """) should equal ("true")
   }
 
   it("test lists") { 
@@ -131,13 +132,15 @@ hi there </div></div>""")
 """)
 
 
-    tmpl.renderTemplate(EmptyMachine, List(
-      Expression.falseExpression, Expression.trueExpression, Expression.falseExpression)) should equal ("false")
+    tmpl.renderTemplate(
+      EmptyMachine, List(
+	Expression.falseExpression, Expression.trueExpression, Expression.falseExpression)) should equal ("false")
 
-    tmpl.renderTemplate(EmptyMachine, 
-			List(Expression.trueExpression),
-			Map("c" -> new Expression.BasicExpression[String]("Hello world"),
-			    "d" -> new Expression.BasicExpression[String]("Goodbye world"))) should equal ("Hello world")
+    tmpl.renderTemplate(
+      EmptyMachine, 
+      List(Expression.trueExpression),
+      Map("c" -> new Expression.BasicExpression[String]("Hello world"),
+	  "d" -> new Expression.BasicExpression[String]("Goodbye world"))) should equal ("Hello world")
 			    
   }
 

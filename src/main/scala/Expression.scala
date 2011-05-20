@@ -120,11 +120,7 @@ object Expression {
       }
     
     override def toString = "Function: %s".format(name)
-    override def extract[S](implicit manifest: Manifest[S]) = 
-      if (numberOfArgs == 0) 
-	apply().extract[S]
-      else
-	throw except("Failed to convert %s to %s", name, manifest.erasure.toString)
+    override def extract[S](implicit manifest: Manifest[S]) = None
   }
   
   abstract class BinaryOperatorFunction(override val name: String, val priority: Int)
@@ -208,7 +204,7 @@ object Expression {
     override def eval(m: Machine): ElementaryExpression = {
       func eval m match {
 	case f: FunctionExpression => f(args map { _ eval m } :_*)
-	case g => throw except("Required function expression, got: %s", g.toString)
+	case g => g 
       }
     }
   }

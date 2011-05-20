@@ -54,28 +54,33 @@ object ExpressionParser extends RegexParsers {
   def subexpression: Parser[BaseExpression] = '(' ~> ws ~> expression <~ ws <~ ')'
   
   abstract class LinePart
-  case class Term(term: BaseExpression, unaryOps: List[UnaryOperatorFunction] = List()) extends LinePart {
-    def base: BaseExpression = 
-      (unaryOps foldRight term) { (op, operand) => new ApplicationExpression(op, operand) }
-  }
+  case class Term(expr: BaseExpression) extends LinePart
   case class BinaryOperator(op: BinaryOperatorFunction) extends LinePart
+  
+  def simpleExpression: Parser[BaseExpression] = 
+    (ws ~> (
+      stringExpression | numberExpression | booleanExpression | 
+      listExpression | mapExpression | identifier | subexpression))
 
-  def linePart: Parser[LinePart] =
-    (ws ~> rep(ws ~> unaryOperator <~ ws) ~ (ws ~> (
-      functionCall | stringExpression | numberExpression | booleanExpression | 
-      listExpression | mapExpression | identifier | subexpression)) ^^ {
-      case lst ~ expr => Term(expr, lst) } 
-    )
+  def simpleExpressionWithUnaryPrefix: Parser[BaseExpression] = 
+    ws ~> rep(ws ~> unaryOperator) ~ simpleExpression  ^^ { 
+      case lst ~ se => (lst foldRight se) { (op, operand) => new ApplicationExpression(op, operand) } 
+    }
 
+  def term: Parser[Term] =
+    ws ~> simpleExpressionWithUnaryPrefix ~ rep(ws ~> simpleExpression) ^^ {
+      case expr0 ~ rest => Term(new ApplicationExpression(expr0, rest :_*))
+    }
+    
   def binaryExpression: Parser[List[LinePart]] = 
-    linePart ~  rep(ws ~> binaryOperator ~ (ws ~> linePart)) ^^ { 
+    term ~  rep(ws ~> binaryOperator ~ (ws ~> term)) ^^ { 
       case lp0 ~ lst =>
 	lp0 :: ( lst flatMap { case op ~ lp => List(BinaryOperator(op) , lp)} )
     }
 
   def expression: Parser[BaseExpression] = 
-    (ws ~> binaryExpression) ^^ { parseLineParts(_) match {
-      case (t: Term) :: Nil => t.base
+    (ws ~> binaryExpression) ^^ { x => parseLineParts(x) match {
+      case Term(t) :: Nil => t
       case o => throw except("Expected list with one term, got: %s", o)()
     }
   }
@@ -86,25 +91,22 @@ object ExpressionParser extends RegexParsers {
       case head :: Nil => lst
 
       // Parser operator
-      case (arg0: Term) :: (op: BinaryOperator) ::  tail => {
+      case Term(t) :: (op: BinaryOperator) ::  tail => {
 	if (op.op.priority <= priority) {
 	  lst
 	} else if (tail isEmpty) {
-	  List(Term(new ApplicationExpression(op.op, arg0.base)))
+	  List(Term(new ApplicationExpression(op.op, t)))
 	} else {
 	  parseLineParts(tail, op.op.priority) match {
-	    case (arg1: Term) :: tail => parseLineParts(
-	      Term(new ApplicationExpression(op.op, arg0.base, arg1.base)) :: tail, priority)
+	    case Term(t2) :: tail => parseLineParts(
+	      Term(new ApplicationExpression(op.op, t, t2)) :: tail, priority)
 	    case o => throw except("Internal error, excepted list with term as start, got: %s", o)()
 	  }
 	}
       }
-
-      // Parse function call
-      case (arg0: Term) :: (arg1 : Term) :: tail => {
-	val (terms, rest) = tail span { _.isInstanceOf[Term] }
-	parseLineParts(Term(new ApplicationExpression(
-	  arg0.base, (arg1.base :: (terms map { _.asInstanceOf[Term].base })) :_*)) :: rest, priority)
+      
+      case o => {
+	throw except("Failed to do anythin sensible with %s", o.toString)()
       }
     }
   }
