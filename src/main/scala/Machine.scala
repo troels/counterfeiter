@@ -2,25 +2,33 @@ package org.bifrost.counterfeiter
 
 import scala.collection.mutable.HashMap
 import Expression.ElementaryExpression
+import HtmlOutput.HtmlTemplate
 
 abstract class Pad { 
   def lookup(identifier: String): Option[ElementaryExpression]
-  def newPad(vars: Map[String, ElementaryExpression]): Pad
 }
 
 object EmptyPad extends Pad { 
   override def lookup(identifier: String) = None
-  override def newPad(vars: Map[String, ElementaryExpression]) = new VariablePad(vars, Some(this)) 
 }
   
-class VariablePad(vars: Map[String, ElementaryExpression] = Map(), parentPad: Option[Pad] = None) extends Pad{ 
+class VariablePad(vars: Map[String, ElementaryExpression] = Map(), parentPad: Pad = EmptyPad) extends Pad{ 
   override def lookup(identifier: String): Option[ElementaryExpression] =
-    (vars get identifier) orElse (parentPad flatMap (_ lookup identifier))
-  override def newPad(vars: Map[String, ElementaryExpression]) = 
-    new VariablePad(vars, Some(this))
+    (vars get identifier) orElse (parentPad lookup identifier)
 }
 
-class Machine { 
-  private val templates = new HashMap[String, HtmlOutput.BaseElem]
+class Machine(val templates: Map[String, HtmlTemplate], val pad: Pad = EmptyPad) { 
+  def this(templateList: List[HtmlTemplate], pad: Pad) = 
+    this(templateList map { tmpl => tmpl.name -> tmpl } toMap, pad)
+
+  def newPad(vars: Map[String, ElementaryExpression]) = 
+    new Machine(templates, new VariablePad(vars, pad))
+
+  def renderTemplate(name: String, lst: List[ElementaryExpression] = List(), 
+		     map: Map[String, ElementaryExpression] = Map()) =
+    templates(name).renderTemplate(this, lst, map)
+    
 }
+
+object EmptyMachine extends Machine(Map[String, HtmlTemplate](), BasicFunctions.standardPad)
 

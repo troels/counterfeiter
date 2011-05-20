@@ -35,7 +35,6 @@ object BasicFunctions {
       }
     } 
   )
-					     
   
   val functionList = List(substring)
   

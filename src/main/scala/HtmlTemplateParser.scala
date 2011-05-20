@@ -10,7 +10,9 @@ import Expression.{BaseExpression, BasicExpression}
 object HtmlTemplateParser extends RegexParsers with ImplicitConversions { 
   import U.Implicits._
   override protected val whiteSpace = "".r
-  
+
+  class HtmlTemplateParserException(msg: String) extends U.CounterFeiterException(msg: String)
+
   def ws = "[ \t\r\n]*".r
   def nonNl = "[^\r\n]*".r
   def forcedWs = "[ \r\t\n]+".r
@@ -120,14 +122,24 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
 
   def assembleTemplate(name: String, firstArgs: List[(String, Option[BaseExpression])], 
 		       secondArgs: List[(String, Option[BaseExpression])], body: BaseElem) = {
-    val args = ListMap(firstArgs ++ secondArgs map { case (k, v) => (k -> (v map { _ eval EmptyPad })) } :_*)
+    val args = ListMap(firstArgs ++ secondArgs map { case (k, v) => (k -> (v map { _ eval EmptyMachine })) } :_*)
     new HtmlTemplate(name, args, body)
   }
-
+  
   def templateDeclaration: Parser[HtmlTemplate] = 
-    (identifier ~ rep(wsNoNl ~> identifier ~ 
-		      opt(wsNoNl ~> '=' ~> wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ^^ tuplify) 
-     <~ nl) ~ (newIndent("", parseArgsOnLevel, List()) ^^ { 
+    (identifier ~ rep(
+      wsNoNl ~> identifier ~ opt(wsNoNl ~> '=' ~> wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ^^ tuplify)
+     <~ wsNoNl <~ nl) ~ (newIndent("", parseArgsOnLevel, List()) ^^ { 
       lst => lst map { case (k, v) => k -> Some(new Expression.BaseElemExpression(v)) } } ) ~ 
        newIndent("", parseElemsOnLevel, EmptyElem) ^^ assembleTemplate
+  
+  def parseModule(str: String): Machine = 
+    (rep("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration))(
+      new CharSequenceReader(str)) match {
+      case Success(res, next) if next.atEnd => new Machine(res, EmptyPad)
+      case Success(res, next) =>  
+	throw new HtmlTemplateParserException("Garbage at end of file:\n%s".format(next.pos.longString))
+      case ns: NoSuccess => 
+	throw new HtmlTemplateParserException("Failed to parser because of: %s".format(ns.msg))
+    }
 }

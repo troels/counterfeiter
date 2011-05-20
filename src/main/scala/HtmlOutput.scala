@@ -5,7 +5,7 @@ import scala.collection.immutable.ListMap
 
 object HtmlOutput {
   abstract sealed class BaseElem { 
-    def eval(pad: Pad): String
+    def eval(m: Machine): String
   }
   
   class HtmlOutputException(msg: String) extends U.CounterFeiterException(msg: String)
@@ -14,20 +14,20 @@ object HtmlOutput {
     new HtmlOutputException(format.format(args :_*))
   
   class Text(text: String) extends BaseElem {
-    override def eval(pad: Pad): String = text
+    override def eval(m: Machine): String = text
   }
 
   class Tag(tag: String, attributes: Map[String, BaseExpression], content: List[BaseElem]=List()) 
   extends BaseElem {
-    def outputAttribs(pad: Pad): String = 
+    def outputAttribs(m: Machine): String = 
       attributes map { 
-	case (k, v) => "%s=\"%s\"".format(k, (v eval pad).extractOrThrow[String])
+	case (k, v) => "%s=\"%s\"".format(k, (v eval m).extractOrThrow[String])
       } mkString " "
 
-    override def eval(pad: Pad): String = {
-      val attribs = outputAttribs(pad)
+    override def eval(m: Machine): String = {
+      val attribs = outputAttribs(m)
       val attribsOut = if (attribs isEmpty) "" else " " + attribs
-      val evaledContent = content map ( _ eval pad ) mkString "\n"
+      val evaledContent = content map ( _ eval m ) mkString "\n"
       if (evaledContent isEmpty) 
 	"<%s%s/>".format(tag, attribsOut)
       else 
@@ -42,37 +42,45 @@ object HtmlOutput {
   }
 
   object EmptyElem extends BaseElem { 
-    override def eval(pad: Pad): String = ""
+    override def eval(m: Machine): String = ""
   }
 
   class Expression(expression: BaseExpression) extends BaseElem { 
-    override def eval(pad: Pad): String = (expression eval pad).extractOrThrow[String]
+    override def eval(m: Machine): String = (expression eval m).extractOrThrow[String]
   }
   
   class ElemList(elems: BaseElem*) extends BaseElem {
-    override def eval(pad: Pad) = 
-      elems map ( _ eval pad) mkString ""
+    override def eval(m: Machine) = 
+      elems map ( _ eval m) mkString ""
     
     override def toString = "ElemList:[\n%s\n]".format(elems map { _.toString } mkString "\n")
   }
 
   class IfElem(clauses: (BaseExpression, BaseElem)*) extends BaseElem{
-    override def eval(pad: Pad) = 
-      clauses find { case (cond, _) => (cond eval pad).extractOrThrow[Boolean] } map {
-	case (_, elem) => elem eval pad } getOrElse ""
+    override def eval(m: Machine) = 
+      clauses find { case (cond, _) => (cond eval m).extractOrThrow[Boolean] } map {
+	case (_, elem) => elem eval m } getOrElse ""
   }
 
   class ForElem(variable: String, range: BaseExpression, clauses: BaseElem) extends BaseElem{
-    override def eval(pad: Pad) = {
-      (range eval pad).extractOrThrow[List[ElementaryExpression]] map { 
-	i: ElementaryExpression => clauses eval (pad newPad Map(variable -> i))
+    override def eval(m: Machine) = {
+      (range eval m).extractOrThrow[List[ElementaryExpression]] map { 
+	i: ElementaryExpression => clauses eval (m newPad Map(variable -> i))
       } mkString ""
     }
   }
 
-  class HtmlTemplate(name: String, argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
+  class CallTemplate(templateName: String, positionalArguments: List[BaseExpression], 
+		     namedArguments: Map[String, BaseExpression]) extends BaseElem {
+    override def eval(m: Machine) = {
+      m.renderTemplate(templateName, positionalArguments map { _ eval m },
+		       namedArguments mapValues  { _ eval m })
+    }
+  }
+
+  class HtmlTemplate(val name: String, argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
 		     content: BaseElem) {
-    def renderTemplate(namedArguments: Map[String, ElementaryExpression]): String = {
+    def renderTemplate(m: Machine, namedArguments: Map[String, ElementaryExpression]): String = {
       val allArguments = argumentTemplate map {
 	case (name, default) => 
 	  namedArguments get name orElse default match {
@@ -81,11 +89,10 @@ object HtmlOutput {
 	  }
       }
 
-      val pad = new VariablePad(allArguments)
-      content eval pad
+      content eval (m newPad allArguments)
     }
 
-    def renderTemplate(
+    def renderTemplate(m: Machine,
       positionalArguments: List[ElementaryExpression], namedArguments: Map[String, ElementaryExpression]): String = {
       val newNamedArgs = positionalArguments zip argumentTemplate map {
 	case (arg, (name, _)) => 
@@ -95,10 +102,10 @@ object HtmlOutput {
 	    (name -> arg)
       }
 
-	renderTemplate(namedArguments ++ newNamedArgs)
+	renderTemplate(m, namedArguments ++ newNamedArgs)
     }
     
-    def renderTemplate(positionalArguments: List[ElementaryExpression]): String =
-      renderTemplate(positionalArguments, Map())
+    def renderTemplate(m: Machine, positionalArguments: List[ElementaryExpression]): String =
+      renderTemplate(m, positionalArguments, Map())
   }
 }

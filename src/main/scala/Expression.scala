@@ -10,12 +10,12 @@ object Expression {
 
   abstract sealed class BaseExpression {
     def isElementary: Boolean
-    def eval(pad: Pad): ElementaryExpression
+    def eval(m: Machine): ElementaryExpression
   }
   
   abstract sealed class ElementaryExpression extends BaseExpression {
     override def isElementary = true
-    override def eval(pad: Pad): ElementaryExpression = this
+    override def eval(m: Machine): ElementaryExpression = this
     def extract[T](implicit manifest: Manifest[T]): Option[T] 
     
     def extractOrThrow[T](implicit manifest: Manifest[T]): T = 
@@ -68,9 +68,9 @@ object Expression {
 
   class MapExpression(expr: (BaseExpression, BaseExpression)*) extends BaseExpression {
     override def isElementary = false
-    override def eval(pad: Pad) = 
+    override def eval(m: Machine) = 
       new ElementaryMapExpression(expr map { 
-	case (k, v) => (k eval pad).extractOrThrow[String] -> (v eval pad) } :_*)
+	case (k, v) => (k eval m).extractOrThrow[String] -> (v eval m) } :_*)
   }  
   
   class ElementaryListExpression(expr: ElementaryExpression*) extends ElementaryExpression {
@@ -88,7 +88,7 @@ object Expression {
 
   class ListExpression(expr: BaseExpression*) extends BaseExpression{ 
     override def isElementary = false
-    override def eval(pad: Pad) = new ElementaryListExpression(expr map { _ eval pad } :_*)
+    override def eval(m: Machine) = new ElementaryListExpression(expr map { _ eval m } :_*)
   }
       
       
@@ -205,24 +205,24 @@ object Expression {
   }
   
   class ApplicationExpression(val func: BaseExpression, val args: BaseExpression*) extends ComplexExpression{
-    override def eval(pad: Pad): ElementaryExpression = {
-      func eval pad match {
-	case f: FunctionExpression => f(args map { _ eval pad } :_*)
+    override def eval(m: Machine): ElementaryExpression = {
+      func eval m match {
+	case f: FunctionExpression => f(args map { _ eval m } :_*)
 	case g => throw except("Required function expression, got: %s", g.toString)
       }
     }
   }
   
   class VariableExpression(variable: String) extends ComplexExpression { 
-    override def eval(pad: Pad): ElementaryExpression = 
-      pad lookup variable match {
+    override def eval(m: Machine): ElementaryExpression = 
+      m.pad lookup variable match {
 	case Some(v) => v
 	case None => throw except("%s is undefined" format variable)
       }
   }
   
   class BaseElemExpression(out: HtmlOutput.BaseElem) extends ComplexExpression { 
-    override def eval(pad: Pad): ElementaryExpression = new BasicExpression(out eval pad)
+    override def eval(m: Machine): ElementaryExpression = new BasicExpression(out eval m)
   }
 
   def trueExpression = new BasicExpression[Boolean](true)

@@ -9,16 +9,14 @@ import org.junit.runner.RunWith
 @RunWith(classOf[JUnitRunner])
 class SimpleTest extends Spec with ShouldMatchers { 
   import org.bifrost.counterfeiter.{ExpressionParser, VariablePad, Expression,  HtmlOutput,
-				    BasicFunctions, HtmlTemplateParser}
+				    BasicFunctions, HtmlTemplateParser, EmptyMachine}
   import Expression.ElementaryExpression
   import scala.util.parsing.input.CharSequenceReader
-  
-  val variablePad = BasicFunctions.standardPad
-  
+
   def testExpressionParser[T](str: String)(implicit m: Manifest[T]): T = 
     ExpressionParser.expression(new CharSequenceReader(str)) match { 
       case ExpressionParser.Success(res, next) => 
-	res eval variablePad match {
+	res eval EmptyMachine match {
 	  case s: ElementaryExpression => s.extractOrThrow[T]
 	  case other => fail(other.toString)
 	}
@@ -28,7 +26,7 @@ class SimpleTest extends Spec with ShouldMatchers {
   def testHtmlTemplateParser[T](in: String): String = 
     HtmlTemplateParser.htmlElem("")(new CharSequenceReader(in)) match {
       case HtmlTemplateParser.Success(res, next) => 
-	res eval variablePad
+	res eval EmptyMachine
       case o => fail(o.toString)
     }
 
@@ -133,12 +131,13 @@ hi there </div></div>""")
 """)
 
 
-    tmpl.renderTemplate(List(
+    tmpl.renderTemplate(EmptyMachine, List(
       Expression.falseExpression, Expression.trueExpression, Expression.falseExpression)) should equal ("false")
 
-    tmpl.renderTemplate(List(Expression.trueExpression),
-      Map("c" -> new Expression.BasicExpression[String]("Hello world"),
-	  "d" -> new Expression.BasicExpression[String]("Goodbye world"))) should equal ("Hello world")
+    tmpl.renderTemplate(EmptyMachine, 
+			List(Expression.trueExpression),
+			Map("c" -> new Expression.BasicExpression[String]("Hello world"),
+			    "d" -> new Expression.BasicExpression[String]("Goodbye world"))) should equal ("Hello world")
 			    
   }
 
@@ -151,12 +150,33 @@ hi there </div></div>""")
  | Hello there {e} {b} {d}
 """)
 
-    tmpl.renderTemplate(
+    tmpl.renderTemplate(EmptyMachine,
       Map("d" -> new Expression.BasicExpression[String]("hello"))) should equal("""Hello there <span><h>Hello there</h></span> 6 hello""")
 
-    tmpl.renderTemplate(
+    tmpl.renderTemplate(EmptyMachine,
       Map("d" -> new Expression.BasicExpression[String]("hi"), 
 	  "e" -> new Expression.BasicExpression[String]("Something different"))
      ) should equal ("""Hello there Something different 6 hi""")
+  }
+
+  it("test module parser") {
+    val module = HtmlTemplateParser.parseModule("""
+tmpl1 name profession
+ | Hello there {name}
+ | You are an 
+ h2 
+  | {profession}
+
+tmpl2 name 
+ profession: 
+  span
+   | Bicyclerepairman
+ h2 
+  | Hello { name }
+  | you are not a { profession }
+""")
+
+    module.renderTemplate("tmpl2", map = Map("name" -> new Expression.BasicExpression[String]("hello"))
+			) should equal ("<h2>Hello hello\nyou are not a <span>Bicyclerepairman</span></h2>")
   }
 }
