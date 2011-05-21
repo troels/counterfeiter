@@ -31,7 +31,7 @@ class SimpleTest extends Spec with ShouldMatchers {
     }
 
   def testHtmlTemplateDeclarationParser[T](in: String): HtmlOutput.HtmlTemplate = 
-    HtmlTemplateParser.templateDeclaration(new CharSequenceReader(in)) match {
+    HtmlTemplateParser.templateDeclaration("")(new CharSequenceReader(in)) match {
       case HtmlTemplateParser.Success(res, next) => res
       case o => fail(o.toString)
     }
@@ -124,7 +124,7 @@ hi there </div></div>""")
 
   it("test parse template") { 
     val tmpl = testHtmlTemplateDeclarationParser(
-      """a b c d
+      """def a b c d
  + if b
   | {c}
  + else
@@ -146,7 +146,7 @@ hi there </div></div>""")
 
   it("test default arguments") { 
     val tmpl = testHtmlTemplateDeclarationParser(
-"""a b={3 + 3} c={2} d
+"""def a b={3 + 3} c={2} d
  e:
   span h
    | Hello there
@@ -164,14 +164,14 @@ hi there </div></div>""")
 
   it("test module parser") {
     val module = HtmlTemplateParser.parseModule("""
-tmpl1 name profession
+def tmpl1 name profession
  | Hello there {name}
  | You are an 
  h2 
   | { substring profession 0 3 }
  | Hi 
 
-tmpl2 name 
+def tmpl2 name 
  profession: 
   span
    | Bicyclerepairman
@@ -179,7 +179,7 @@ tmpl2 name
   | Hello { name }
   | you are not a { profession }
 
-tmpl3 name 
+def tmpl3 name 
  - tmpl1 {name} {"Cyclist"}
  h1 span
   | Charming

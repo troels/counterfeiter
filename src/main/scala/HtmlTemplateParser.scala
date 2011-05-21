@@ -135,23 +135,35 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
       
   def parseArgsOnLevel(indent: String): Parser[List[(String, BaseElem)]] = rep(indent ~> parseArg(indent)) 
 
-  def assembleTemplate(name: String, firstArgs: List[(String, Option[BaseExpression])], 
+  def assembleTemplate(namespace: String)(name: String, firstArgs: List[(String, Option[BaseExpression])], 
 		       secondArgs: List[(String, Option[BaseExpression])], body: BaseElem) = {
     val args = ListMap(firstArgs ++ secondArgs map { case (k, v) => (k -> (v map { _ eval EmptyMachine })) } :_*)
-    new HtmlTemplate(name, args, body)
+    new HtmlTemplate(name, namespace, args, body)
   }
   
-  def templateDeclaration: Parser[HtmlTemplate] = 
-    (identifier ~ rep(
+  def templateDeclaration(namespace: String): Parser[HtmlTemplate] = 
+    ("def" ~> forcedWsNoNl ~> identifier ~ rep(
       wsNoNl ~> identifier ~ opt(wsNoNl ~> '=' ~> wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ^^ tuplify)
      <~ nl) ~ (newIndent("", parseArgsOnLevel, List()) ^^ { 
       lst => lst map { case (k, v) => k -> Some(new Expression.BaseElemExpression(v)) } } ) ~ 
-       newIndent("", parseElemsOnLevel, EmptyElem) ^^ assembleTemplate
+       newIndent("", parseElemsOnLevel, EmptyElem) ^^ assembleTemplate(namespace)
+  
+  
+  def namespaceDeclaration: Parser[String] =
+    ("namespace" ~> forcedWsNoNl ~> rep1sep(identifier, '.') <~ nl) ^^ (_ mkString ".")
+  
+  def namespace: Parser[List[HtmlTemplate]] =
+    Parser[List[HtmlTemplate]] { in =>
+      ("(?:[ \r\t\n]*[\r\n])?".r ~> namespaceDeclaration)(in) match {
+	case Success(namespace, next) => rep1("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration(namespace))(next)
+	case o: NoSuccess => rep1("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration(""))(in)
+      }
+     }
   
   def parseModule(str: String): Machine = 
-    (rep("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration))(
-      new CharSequenceReader(str)) match {
-      case Success(res, next) if next.atEnd => new Machine(res, BasicFunctions.standardPad)
+    (rep1(namespace))(new CharSequenceReader(str)) match {
+      case Success(res, next) if next.atEnd => new Machine(
+	res.flatten map { ht => (ht fullName) -> ht } toMap, BasicFunctions.standardPad)
       case Success(res, next) =>  
 	throw new HtmlTemplateParserException("Garbage at end of file:\n%s".format(next.pos.longString))
       case ns: NoSuccess => 

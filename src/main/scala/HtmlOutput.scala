@@ -78,8 +78,12 @@ object HtmlOutput {
     }
   }
 
-  class HtmlTemplate(val name: String, argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
+  class HtmlTemplate(val name: String, val namespace: String,
+		     argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
 		     content: BaseElem) {
+
+    def fullName = List(namespace, name) filter { !_.isEmpty } mkString "."
+
     def renderTemplate(m: Machine, namedArguments: Map[String, ElementaryExpression]): String = {
       val allArguments = argumentTemplate map {
 	case (name, default) => 
