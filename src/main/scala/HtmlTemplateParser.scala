@@ -18,7 +18,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def forcedWs = "[ \r\t\n]+".r
   def wsNoNl = "[ \t]*".r
   def forcedWsNoNl = "[ \t]+".r
-  def nl = "[ \t\r\n]*[\r\n]".r
+  def nl = "[ \r\t\n]*[\r\n]".r | (ws ~> elem(CharSequenceReader.EofCh))
 
   def expression: Parser[BaseExpression] = Parser[BaseExpression] {
     in => ExpressionParser.expression(in) match {
@@ -151,7 +151,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def parseModule(str: String): Machine = 
     (rep("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration))(
       new CharSequenceReader(str)) match {
-      case Success(res, next) if next.atEnd => new Machine(res, EmptyPad)
+      case Success(res, next) if next.atEnd => new Machine(res, BasicFunctions.standardPad)
       case Success(res, next) =>  
 	throw new HtmlTemplateParserException("Garbage at end of file:\n%s".format(next.pos.longString))
       case ns: NoSuccess => 

@@ -168,7 +168,7 @@ tmpl1 name profession
  | Hello there {name}
  | You are an 
  h2 
-  | {profession}
+  | { substring profession 0 3 }
  | Hi 
 
 tmpl2 name 
@@ -197,7 +197,7 @@ tmpl3 name
     module.renderTemplate("tmpl3", List(new Expression.BasicExpression[String]("Hello"))) should equal (
       """Hello there Hello
 You are an 
-<h2>Cyclist</h2>
+<h2>Cyc</h2>
 Hi 
 <h1><span>Charming</span></h1>
 <h2>Hello Hello there

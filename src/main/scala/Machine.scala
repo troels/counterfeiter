@@ -10,11 +10,15 @@ abstract class Pad {
 
 object EmptyPad extends Pad { 
   override def lookup(identifier: String) = None
+  override def toString = "EmptyPad"
 }
   
 class VariablePad(vars: Map[String, ElementaryExpression] = Map(), parentPad: Pad = EmptyPad) extends Pad{ 
   override def lookup(identifier: String): Option[ElementaryExpression] =
     (vars get identifier) orElse (parentPad lookup identifier)
+
+  override def toString = 
+    "VariablePad: [content: %s\n, parent: %s]" format (vars toString, parentPad toString)
 }
 
 class Machine(val templates: Map[String, HtmlTemplate], val pad: Pad = EmptyPad) { 
@@ -27,7 +31,6 @@ class Machine(val templates: Map[String, HtmlTemplate], val pad: Pad = EmptyPad)
   def renderTemplate(name: String, lst: List[ElementaryExpression] = List(), 
 		     map: Map[String, ElementaryExpression] = Map()) =
     templates(name).renderTemplate(this, lst, map)
-    
 }
 
 object EmptyMachine extends Machine(Map[String, HtmlTemplate](), BasicFunctions.standardPad)
