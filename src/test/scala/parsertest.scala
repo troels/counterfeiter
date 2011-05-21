@@ -169,6 +169,7 @@ tmpl1 name profession
  | You are an 
  h2 
   | {profession}
+ | Hi 
 
 tmpl2 name 
  profession: 
@@ -177,9 +178,29 @@ tmpl2 name
  h2 
   | Hello { name }
   | you are not a { profession }
+
+tmpl3 name 
+ - tmpl1 {name} {"Cyclist"}
+ h1 span
+  | Charming
+ - tmpl2 
+   name: 
+    | Hello there
+   profession:
+    span
+     | Killer
 """)
 
     module.renderTemplate("tmpl2", map = Map("name" -> new Expression.BasicExpression[String]("hello"))
 			) should equal ("<h2>Hello hello\nyou are not a <span>Bicyclerepairman</span></h2>")
+
+    module.renderTemplate("tmpl3", List(new Expression.BasicExpression[String]("Hello"))) should equal (
+      """Hello there Hello
+You are an 
+<h2>Cyclist</h2>
+Hi 
+<h1><span>Charming</span></h1>
+<h2>Hello Hello there
+you are not a <span>Killer</span></h2>""")
   }
 }

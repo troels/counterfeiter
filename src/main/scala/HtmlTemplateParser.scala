@@ -70,10 +70,12 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
     }
   
   def namedArgs: Parser[(String, BaseExpression)] = 
-    (wsNoNl ~> identifier <~ wsNoNl <~ '=') ~ (wsNoNl ~> '{' ~> expression <~ '}') ^^ tuplify
+    (wsNoNl ~> identifier <~ wsNoNl <~ '=') ~ (wsNoNl ~> expression ) ^^ tuplify
 
   def templateCallElem(indent: String): Parser[BaseElem] = 
-    ('-' ~> wsNoNl ~> identifier ~ rep(wsNoNl ~> expression) ~ rep(namedArgs) <~ wsNoNl <~ nl) ~ 
+    ('-' ~> wsNoNl ~> identifier ~ 
+      rep(wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ~ 
+      (wsNoNl ~> rep(namedArgs)) <~ wsNoNl <~ nl) ~
     newIndent(indent, parseArgsOnLevel, List()) ^^ { 
       case tmplName ~ posArgs ~ simpleNamedArgs ~ involvedNamedArgs => 
 	new TemplateCall(tmplName, posArgs, 
@@ -86,12 +88,12 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
     (indent ~ forcedWs) ^^ { case a ~ b => a + b }
 
   def htmlElem(indent: String): Parser[BaseElem] =
-    tagElem(indent) | textElem(indent) | ifElem(indent) | forElem(indent)
+    tagElem(indent) | textElem(indent) | ifElem(indent) | forElem(indent) | templateCallElem(indent)
 
   def newIndent[T](indent: String, cont: String => Parser[T], alt: T): Parser[T] = 
     Parser[T] { in =>
       guard(parseLinePrefix(indent))(in) match {
-	case Success(res, next) => cont(res)(next)
+	case Success(res, next) => cont(res)(next) 
 	case ns: NoSuccess => Success(alt, in)
       }
     }
