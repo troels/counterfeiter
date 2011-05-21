@@ -18,7 +18,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def forcedWs = "[ \r\t\n]+".r
   def wsNoNl = "[ \t]*".r
   def forcedWsNoNl = "[ \t]+".r
-  def nl = "[\r\n]+".r
+  def nl = "[ \t\r\n]*[\r\n]".r
 
   def expression: Parser[BaseExpression] = Parser[BaseExpression] {
     in => ExpressionParser.expression(in) match {
@@ -75,7 +75,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def templateCallElem(indent: String): Parser[BaseElem] = 
     ('-' ~> wsNoNl ~> identifier ~ 
       rep(wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ~ 
-      (wsNoNl ~> rep(namedArgs)) <~ wsNoNl <~ nl) ~
+      (wsNoNl ~> rep(namedArgs)) <~ nl) ~
     newIndent(indent, parseArgsOnLevel, List()) ^^ { 
       case tmplName ~ posArgs ~ simpleNamedArgs ~ involvedNamedArgs => 
 	new TemplateCall(tmplName, posArgs, 
@@ -121,7 +121,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   
   def forElem(indent: String): Parser[BaseElem] = 
     ("+" ~> wsNoNl ~> "for" ~> wsNoNl ~> "[a-zA-Z_][\\w_]*".r <~ wsNoNl <~ "in" <~ wsNoNl) ~
-    (expression <~ wsNoNl <~ nl) ~
+    (expression <~ nl) ~
     newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ {
 	case variable ~ expr ~ clause => new ForElem(variable, expr, clause)
     }
@@ -131,7 +131,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def tuplify[A,B](v: A ~ B) = (v._1 -> v._2)
 
   def parseArg(indent: String): Parser[(String, BaseElem)] = 
-    (identifier <~ ':' <~ wsNoNl <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ tuplify
+    (identifier <~ ':' <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ tuplify
       
   def parseArgsOnLevel(indent: String): Parser[List[(String, BaseElem)]] = rep(indent ~> parseArg(indent)) 
 
@@ -144,7 +144,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def templateDeclaration: Parser[HtmlTemplate] = 
     (identifier ~ rep(
       wsNoNl ~> identifier ~ opt(wsNoNl ~> '=' ~> wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ^^ tuplify)
-     <~ wsNoNl <~ nl) ~ (newIndent("", parseArgsOnLevel, List()) ^^ { 
+     <~ nl) ~ (newIndent("", parseArgsOnLevel, List()) ^^ { 
       lst => lst map { case (k, v) => k -> Some(new Expression.BaseElemExpression(v)) } } ) ~ 
        newIndent("", parseElemsOnLevel, EmptyElem) ^^ assembleTemplate
   
