@@ -81,7 +81,7 @@ object HtmlOutput {
 		     argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
 		     content: BaseElem) {
 
-    def fullName = List(namespace, name) filter { !_.isEmpty } mkString "."
+    def fullName = U.joinNamespaceParts(namespace, name)
 
     def renderTemplate(m: Machine, namedArguments: Map[String, ElementaryExpression]): String = {
       val allArguments = argumentTemplate map {

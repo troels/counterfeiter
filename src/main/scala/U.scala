@@ -2,6 +2,7 @@ package org.bifrost.counterfeiter
 import java.lang.reflect.Method
 
 object U {
+  import Implicits._
   class CounterFeiterException(msg: String) extends Exception(msg)
 
   def escapeHtml(str: String) =
@@ -42,12 +43,29 @@ object U {
     def intersperse[S <: T](interElem: S): List[T] = 
       U.intersperse(lst, interElem)
   }
+  
+  class OptionWrapper[T](v: Option[T]) {
+    def getOrThrow(exc: => Exception) = 
+      v match { 
+	case Some(ret) => ret
+	case None => throw exc
+      }
+  }
+  
+  class MapWrapper[A,B](map: Map[A,B]) {
+    def getOrThrow(key: A, exc: => Exception) =
+      map get key getOrThrow exc
+  }
 
   object Implicits { 
     implicit def list2listWrapper[T](lst: List[T]): ListWrapper[T] = new ListWrapper[T](lst)
+    implicit def option2optionWrapper[T](opt: Option[T]): OptionWrapper[T] = new OptionWrapper[T](opt)
+    implicit def map2mapWrapper[A,B](map: Map[A,B]) = new MapWrapper[A,B](map)
   }
 
   def joinNamespaceParts(parts: String*) = 
     parts filter { !_.isEmpty } mkString "."
     
+  def compileModule(code: String) = 
+    new Machine(HtmlTemplateParser.parseModule(code), BasicFunctions.standardPad)
 }

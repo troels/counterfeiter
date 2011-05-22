@@ -60,7 +60,14 @@ object ExpressionParser extends RegexParsers {
   def simpleExpression: Parser[BaseExpression] = 
     (ws ~> (
       stringExpression | numberExpression | booleanExpression | 
-      listExpression | mapExpression | identifier | subexpression))
+      listExpression | mapExpression | identifier | subexpression) ~ 
+      rep(ws ~> '[' ~> ws ~> simpleExpression <~ ws <~ ']')) ^^ { 
+	case expr ~ lookups => 
+	  (lookups foldLeft expr) {
+	    (accum, lookup) => new Pickout(accum, lookup)
+	  }
+      }
+	    
 
   def simpleExpressionWithUnaryPrefix: Parser[BaseExpression] = 
     ws ~> rep(ws ~> unaryOperator) ~ simpleExpression  ^^ { 

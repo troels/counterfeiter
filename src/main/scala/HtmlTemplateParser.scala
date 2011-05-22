@@ -163,10 +163,9 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
       }
      }
   
-  def parseModule(str: String): Machine = 
+  def parseModule(str: String): TemplateCollection = 
     (rep1(namespace))(new CharSequenceReader(str)) match {
-      case Success(res, next) if next.atEnd => new Machine(
-	res.flatten map { ht => (ht fullName) -> ht } toMap, BasicFunctions.standardPad)
+      case Success(res, next) if next.atEnd => new TemplateCollection(res flatten)
       case Success(res, next) =>  
 	throw new HtmlTemplateParserException("Garbage at end of file:\n%s".format(next.pos.longString))
       case ns: NoSuccess => 

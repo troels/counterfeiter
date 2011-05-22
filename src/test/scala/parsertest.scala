@@ -9,7 +9,7 @@ import org.junit.runner.RunWith
 @RunWith(classOf[JUnitRunner])
 class SimpleTest extends Spec with ShouldMatchers { 
   import org.bifrost.counterfeiter.{ExpressionParser, VariablePad, Expression,  HtmlOutput,
-				    BasicFunctions, HtmlTemplateParser, EmptyMachine}
+				    BasicFunctions, HtmlTemplateParser, EmptyMachine, U}
   import Expression.ElementaryExpression
   import scala.util.parsing.input.CharSequenceReader
 
@@ -163,7 +163,7 @@ hi there </div></div>""")
   }
 
   it("test module parser") {
-    val module = HtmlTemplateParser.parseModule("""
+    val module = U.compileModule("""
 def tmpl1 name profession
  | Hello there {name}
  | You are an 
@@ -205,7 +205,7 @@ you are not a <span>Killer</span></h2>""")
   }
 
   it("test namespaces") { 
-    val module = HtmlTemplateParser.parseModule("""
+    val module = U.compileModule("""
 namespace A
 
 def tmpl1 name
@@ -229,5 +229,21 @@ def tmpl3
     module.renderTemplate("A.tmpl1", List(new Expression.BasicExpression[String]("Arne"))) should equal (
       """Hello there
 Hello Arne""")
-  }    
+  }
+
+  it("test indexing lookup") { 
+    val mod = U.compileModule("""
+namespace A
+
+def mapTestTemplate
+ | { ({ "hello": "there", "hi": {"hi": ["Been there"] } })["hi"]["hi"][0] }
+
+def testTemplate
+ | { [1,2,3,[1,2,3]][3][0] = 1 }
+
+""")
+
+    mod.renderTemplate("A.testTemplate", List()) should equal ("true")
+    mod.renderTemplate("A.mapTestTemplate", List()) should equal ("Been there")
+  }
 }

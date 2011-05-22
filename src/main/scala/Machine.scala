@@ -21,10 +21,18 @@ class VariablePad(vars: Map[String, ElementaryExpression] = Map(), parentPad: Pa
     "VariablePad: [content: %s\n, parent: %s]" format (vars toString, parentPad toString)
 }
 
-class Machine(val templates: Map[String, HtmlTemplate], val pad: Pad = EmptyPad, val namespace: String = "") { 
-  def this(templateList: List[HtmlTemplate], pad: Pad) = 
-    this(templateList map { tmpl => tmpl.name -> tmpl } toMap, pad)
+class TemplateCollection(val templates: Map[String, HtmlTemplate]) {
+  def this(templateList: List[HtmlTemplate]) = 
+    this(templateList map { tmpl => tmpl.fullName -> tmpl } toMap)
 
+  def get(name: String) = templates get name
+  def getFromNamespace(namespace: String)(name: String) = get(U.joinNamespaceParts(namespace, name))
+  def merge(tc: TemplateCollection) = new TemplateCollection(templates ++ tc.templates)
+}
+  
+object EmptyTemplateCollection extends TemplateCollection(Map[String, HtmlTemplate]())
+  
+class Machine(val templates: TemplateCollection, val pad: Pad = EmptyPad, val namespace: String = "") { 
   def newPad(vars: Map[String, ElementaryExpression]) = 
     new Machine(templates, new VariablePad(vars, pad), namespace)
   
@@ -32,7 +40,7 @@ class Machine(val templates: Map[String, HtmlTemplate], val pad: Pad = EmptyPad,
 
   def renderTemplate(name: String, lst: List[ElementaryExpression] = List(), 
 		     map: Map[String, ElementaryExpression] = Map()) = {
-    (templates get name) orElse (templates get (U.joinNamespaceParts(namespace, name))) match {
+    (templates get name) orElse ((templates getFromNamespace namespace)(name)) match {
       case Some(tmpl) =>  tmpl renderTemplate (inNamespace(tmpl.namespace), lst, map)
       case None => throw new U.CounterFeiterException(
 	"Failed to lookup template: %s in namespace %s" format (name, namespace))
@@ -40,4 +48,4 @@ class Machine(val templates: Map[String, HtmlTemplate], val pad: Pad = EmptyPad,
   }
 }
 
-object EmptyMachine extends Machine(Map[String, HtmlTemplate](), BasicFunctions.standardPad)
+object EmptyMachine extends Machine(EmptyTemplateCollection, BasicFunctions.standardPad)

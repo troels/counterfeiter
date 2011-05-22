@@ -1,6 +1,7 @@
 package org.bifrost.counterfeiter
 
 import scala.reflect.AnyValManifest
+import U.Implicits._
 
 object Expression {
   class ExpressionEvaluationException(msg: String) extends U.CounterFeiterException(msg)
@@ -78,7 +79,7 @@ object Expression {
       if (m == manifest[List[ElementaryExpression]]) { 
 	Some(toList.asInstanceOf[T])
       } else if (m == manifest[String]) { 
-	Some("[%s]".format(expr map {  _.extractOrThrow[String] } mkString ", ").asInstanceOf[T])
+	Some(("[%s]" format (expr map {  _.extractOrThrow[String] } mkString ", ")).asInstanceOf[T])
       } else {
 	None
       }
@@ -90,7 +91,6 @@ object Expression {
     override def isElementary = false
     override def eval(m: Machine) = new ElementaryListExpression(expr map { _ eval m } :_*)
   }
-      
       
     
   class CurriedFunctionExpression(fn: FunctionExpression, args: ElementaryExpression*) extends FunctionExpression { 
@@ -200,7 +200,29 @@ object Expression {
     override def isElementary = false
   }
   
-  class ApplicationExpression(val func: BaseExpression, val args: BaseExpression*) extends ComplexExpression{
+  class Pickout(from: BaseExpression, elem: BaseExpression) extends ComplexExpression { 
+    override def eval(m: Machine) =  {
+      val _from = from eval m
+      val _elem = elem eval m
+
+      ((_from.extract[List[ElementaryExpression]]) map { 
+	lst => {
+	  val num = _elem.extractOrThrow[Int] 
+	  if (num >= lst.size) {
+	    throw except("Index out of bounds: %d in list %s", num, lst)
+	  }
+	  lst(_elem.extractOrThrow[Int])
+	}
+      }) orElse (_from.extract[Map[String, ElementaryExpression]] map {
+	map => {
+	  val str = _elem.extractOrThrow[String]
+	  map getOrThrow (str, except("No key: %s in map %s", str, map))
+	}
+      }) getOrThrow except("Expected list or map, got: %s", _from)
+    }
+  }
+
+  class ApplicationExpression(val func: BaseExpression, val args: BaseExpression*) extends ComplexExpression {
     override def eval(m: Machine): ElementaryExpression = {
       func eval m match {
 	case f: FunctionExpression => f(args map { _ eval m } :_*)
@@ -211,10 +233,7 @@ object Expression {
   
   class VariableExpression(variable: String) extends ComplexExpression { 
     override def eval(m: Machine): ElementaryExpression = 
-      m.pad lookup variable match {
-	case Some(v) => v
-	case None => throw except("%s is undefined" format variable)
-      }
+      m.pad lookup variable getOrThrow except("%s is undefined" format variable)
   }
   
   class BaseElemExpression(out: HtmlOutput.BaseElem) extends ComplexExpression { 
