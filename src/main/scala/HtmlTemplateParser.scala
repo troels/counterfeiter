@@ -73,7 +73,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
     (wsNoNl ~> identifier <~ wsNoNl <~ '=') ~ (wsNoNl ~> expression ) ^^ tuplify
 
   def templateCallElem(indent: String): Parser[BaseElem] = 
-    ('-' ~> wsNoNl ~> identifier ~ 
+    ('-' ~> wsNoNl ~> fullyQualifiedIdentifier ~ 
       rep(wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ~ 
       (wsNoNl ~> rep(namedArgs)) <~ nl) ~
     newIndent(indent, parseArgsOnLevel, List()) ^^ { 
@@ -127,6 +127,9 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
     }
   
   def identifier = "[a-zA-Z_][-\\w]*".r
+  
+  def fullyQualifiedIdentifier = 
+    "[a-zA-Z_][-\\w]*(?:\\.[a-zA-Z_][-\\w]*)*".r
 
   def tuplify[A,B](v: A ~ B) = (v._1 -> v._2)
 
@@ -150,7 +153,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   
   
   def namespaceDeclaration: Parser[String] =
-    ("namespace" ~> forcedWsNoNl ~> rep1sep(identifier, '.') <~ nl) ^^ (_ mkString ".")
+    "namespace" ~> forcedWsNoNl ~> fullyQualifiedIdentifier <~ nl
   
   def namespace: Parser[List[HtmlTemplate]] =
     Parser[List[HtmlTemplate]] { in =>

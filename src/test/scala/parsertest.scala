@@ -203,4 +203,31 @@ Hi
 <h2>Hello Hello there
 you are not a <span>Killer</span></h2>""")
   }
+
+  it("test namespaces") { 
+    val module = HtmlTemplateParser.parseModule("""
+namespace A
+
+def tmpl1 name
+ + if name = "Arne"
+  | Hello there
+ + else 
+  | Hi
+ - B.tmpl2 {name}
+
+namespace B
+
+def tmpl2 name
+ | Hello {name}
+
+def tmpl3 
+ - tmpl2 {"Holger"}
+""")
+    
+    module.renderTemplate("B.tmpl3", List()) should equal ("Hello Holger")
+    
+    module.renderTemplate("A.tmpl1", List(new Expression.BasicExpression[String]("Arne"))) should equal (
+      """Hello there
+Hello Arne""")
+  }    
 }
