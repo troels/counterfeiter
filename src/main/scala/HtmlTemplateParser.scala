@@ -59,19 +59,23 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
      (success(Some("div")) ~ success(None) ~ rep1(classPart))) ~ 
      opt('(' ~> ws ~> tagAttributeList <~ ws <~ ')') ^^ assembleTag
 
+  def continueAndFindNewIndent(indent: String): Parser[BaseElem] = {
+    ((wsNoNl ~> htmlElem(indent) ^^ (Some(_))) | (wsNoNl ~> nl ^^^ None)) ~  
+      newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ {
+       case opt ~ rest => opt map { x => new ElemList(x, rest) } getOrElse rest
+     }
+  }
+
   def tagElem(indent: String): Parser[BaseElem] = 
-    (rep1sep(tagPart, forcedWsNoNl) <~ wsNoNl <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ {
-      case _tagLst ~ content => {
-	val tagLst = (_tagLst reverse)
-	((tagLst tail) foldLeft ((tagLst head) addContent content)) { 
-	  (innerTag, outerTag) => outerTag addContent innerTag 
-	}
+    (tagPart ~ continueAndFindNewIndent(indent)) ^^ {
+      case tag ~ rest => {
+        tag addContent rest
       }
     }
   
   def namedArgs: Parser[(String, BaseExpression)] = 
     (wsNoNl ~> identifier <~ wsNoNl <~ '=') ~ (wsNoNl ~> expression ) ^^ tuplify
-
+  
   def templateCallElem(indent: String): Parser[BaseElem] = 
     ('-' ~> wsNoNl ~> fullyQualifiedIdentifier ~ 
       rep(wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ~ 
@@ -137,7 +141,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def tuplify[A,B](v: A ~ B) = (v._1 -> v._2)
 
   def parseArg(indent: String): Parser[(String, BaseElem)] = 
-    (identifier <~ ':' <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ tuplify
+    (identifier <~ ':') ~ (continueAndFindNewIndent(indent)) ^^ tuplify
       
   def parseArgsOnLevel(indent: String): Parser[List[(String, BaseElem)]] = rep(indent ~> parseArg(indent))
 

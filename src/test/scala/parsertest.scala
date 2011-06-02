@@ -282,10 +282,10 @@ def smalltest
     val mod = U.compileModule("""
 namespace A
 
-def test a b
+def test
  h1 | Hi there
  h2 - testTmpl
-  arg0: | test
+  args0: | test
 
 def testTmpl args0
  span | { args0 }
