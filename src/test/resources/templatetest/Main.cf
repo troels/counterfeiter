@@ -1,0 +1,10 @@
+namespace Main
+
+def mainPage title content
+ head title 
+  | { title } 
+ body 
+  | { content }
+
+
+    

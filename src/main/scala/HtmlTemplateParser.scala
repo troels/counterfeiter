@@ -2,6 +2,7 @@ package org.bifrost.counterfeiter
 
 import scala.util.parsing.combinator.{ Parsers, RegexParsers, ImplicitConversions }
 import scala.util.parsing.input.CharSequenceReader
+import scala.util.parsing.input.CharSequenceReader.EofCh
 import scala.collection.immutable.ListMap
 
 import HtmlOutput._
@@ -114,9 +115,12 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   }
 
   def textElem(indent: String): Parser[BaseElem] = 
-    ("|" ~> ws ~> rep(
-      ("[^\r\n{]+".r ^^ (new Text(_))) | ("{" ~> wsNoNl ~> expression ^^ (new Expression(_))) <~ wsNoNl <~ '}') ^^ {
-	new ElemList(_ :_*) } ) <~ nl
+    "|" ~> wsNoNl ~> 
+      (rep(
+	("[^\r\n{]+".r ^^ (new Text(_))) | 
+	("{" ~> wsNoNl ~> expression ^^ (new Expression(_))) <~ wsNoNl <~ '}') ^^ {
+	  new ElemList(_ :_*) 
+	}) <~ wsNoNl <~ nl
     
   
   def forElem(indent: String): Parser[BaseElem] = 
@@ -165,9 +169,13 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   
   def parseModule(str: String): TemplateCollection = 
     (rep1(namespace))(new CharSequenceReader(str)) match {
-      case Success(res, next) if next.atEnd => new TemplateCollection(res flatten)
-      case Success(res, next) =>  
-	throw new HtmlTemplateParserException("Garbage at end of file:\n%s".format(next.pos.longString))
+      case Success(res, next) => {
+	("\\s*".r ~> EofCh)(next) match { 
+	  case Success(_, next) => new TemplateCollection(res flatten)
+	  case ns: NoSuccess => 
+	    throw new HtmlTemplateParserException("Garbage at end of file:\n%s".format(next.pos.longString))
+	}
+      }
       case ns: NoSuccess => 
 	throw new HtmlTemplateParserException("Failed to parser because of: %s".format(ns.msg))
     }

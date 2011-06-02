@@ -193,8 +193,7 @@ object Expression {
                           .toMap[String, BinaryOperatorFunction]
   
   val unaryOperators = List(NotFunction, UnaryMinusFunction)
-  val unaryOperatorMap = (unaryOperators map { op => op.name -> op })
-                         .toMap[String, UnaryOperatorFunction]
+  val unaryOperatorMap = (unaryOperators map { op => op.name -> op }) toMap
 
   abstract class ComplexExpression extends BaseExpression { 
     override def isElementary = false
@@ -208,9 +207,8 @@ object Expression {
       ((_from.extract[List[ElementaryExpression]]) map { 
 	lst => {
 	  val num = _elem.extractOrThrow[Int] 
-	  if (num >= lst.size) {
+	  if (num >= lst.size) 
 	    throw except("Index out of bounds: %d in list %s", num, lst)
-	  }
 	  lst(_elem.extractOrThrow[Int])
 	}
       }) orElse (_from.extract[Map[String, ElementaryExpression]] map {

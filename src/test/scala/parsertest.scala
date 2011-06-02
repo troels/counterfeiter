@@ -5,11 +5,13 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.junit.JUnitRunner
 import org.junit.runner.RunWith
 
+import java.io.File
 
 @RunWith(classOf[JUnitRunner])
 class SimpleTest extends Spec with ShouldMatchers { 
-  import org.bifrost.counterfeiter.{ExpressionParser, VariablePad, Expression,  HtmlOutput,
-				    BasicFunctions, HtmlTemplateParser, EmptyMachine, U}
+  import org.bifrost.counterfeiter.{ ExpressionParser, VariablePad, Expression,  HtmlOutput,
+				     BasicFunctions, HtmlTemplateParser, EmptyMachine, U,
+				     Counterfeiter }
   import Expression.ElementaryExpression
   import scala.util.parsing.input.CharSequenceReader
 
@@ -246,4 +248,10 @@ def testTemplate
     mod.renderTemplate("A.testTemplate", List()) should equal ("true")
     mod.renderTemplate("A.mapTestTemplate", List()) should equal ("Been there")
   }
+
+  it("Handling directory of templates") { 
+    val machine = Counterfeiter.loadFromDir(
+      new File(getClass.getClassLoader.getResource("templatetest").getFile))
+  }
+  
 }

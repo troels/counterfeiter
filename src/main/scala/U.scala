@@ -1,5 +1,7 @@
 package org.bifrost.counterfeiter
+
 import java.lang.reflect.Method
+import java.io.File
 
 object U {
   import Implicits._
@@ -63,8 +65,18 @@ object U {
     implicit def map2mapWrapper[A,B](map: Map[A,B]) = new MapWrapper[A,B](map)
   }
 
+  def recursivelyGet(dir: File): List[File] = { 
+    if (dir isDirectory)
+      (dir listFiles) flatMap ( recursivelyGet(_) ) toList
+    else
+      List(dir)
+  }
+      
+  def recursivelyGetWithExtension(dir: File, ext: String): List[File] = 
+    recursivelyGet(dir) filter ( _.getName endsWith ext )
+
   def joinNamespaceParts(parts: String*) = 
-    parts filter { !_.isEmpty } mkString "."
+    parts filter ( !_.isEmpty ) mkString "."
     
   def compileModule(code: String) = 
     new Machine(HtmlTemplateParser.parseModule(code), BasicFunctions.standardPad)

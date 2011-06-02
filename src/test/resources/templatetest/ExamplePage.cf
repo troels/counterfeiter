@@ -1,0 +1,13 @@
+namespace ExamplePage
+
+def otherPage
+ - mainPage { "Other page" }
+  content:
+   h1 
+    | Hello there.
+    
+    | Hi     
+   #mainpart
+    | I Will be thy slave.
+    
+    

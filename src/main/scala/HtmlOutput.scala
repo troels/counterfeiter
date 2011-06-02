@@ -65,7 +65,7 @@ object HtmlOutput {
   class ForElem(variable: String, range: BaseExpression, clauses: BaseElem) extends BaseElem{
     override def eval(m: Machine) = {
       (range eval m).extractOrThrow[List[ElementaryExpression]] map { 
-	i: ElementaryExpression => clauses eval (m newPad Map(variable -> i))
+	i => clauses eval (m newPad Map(variable -> i))
       } mkString ""
     }
   }
