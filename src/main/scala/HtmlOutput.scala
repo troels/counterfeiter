@@ -46,7 +46,11 @@ object HtmlOutput {
   }
 
   class Expression(expression: BaseExpression) extends BaseElem { 
-    override def eval(m: Machine): String = (expression eval m).extractOrThrow[String]
+    override def eval(m: Machine): String = {
+      val expr = expression eval m
+      (expr.extract[HtmlEscapedString] getOrElse
+       (HtmlEscapedString escape expr.extractOrThrow[String])).toString
+    }
   }
   
   class ElemList(elems: BaseElem*) extends BaseElem {

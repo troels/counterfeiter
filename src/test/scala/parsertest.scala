@@ -11,7 +11,7 @@ import java.io.File
 class SimpleTest extends Spec with ShouldMatchers { 
   import org.bifrost.counterfeiter.{ ExpressionParser, VariablePad, Expression,  HtmlOutput,
 				     BasicFunctions, HtmlTemplateParser, EmptyMachine, U,
-				     Counterfeiter }
+				     Counterfeiter, HtmlEscapedString }
   import Expression.ElementaryExpression
   import scala.util.parsing.input.CharSequenceReader
 
@@ -254,4 +254,46 @@ def testTemplate
       new File(getClass.getClassLoader.getResource("templatetest").getFile))
   }
   
+  it("htmlescaping") {
+    val mod = U.compileModule("""
+namespace A
+
+def test a b
+ h1                              
+  | { e a }
+  | { "<Hi> &amp;there" }
+  | { b }
+ - smalltest
+def smalltest
+ h2 
+  | Hi there
+""")
+    
+    mod.renderTemplate("A.test", List(
+      new Expression.BasicExpression[String]("<ab"), 
+      new Expression.BasicExpression[HtmlEscapedString](HtmlEscapedString("&c")))) should equal(
+"""<h1><ab
+&lt;Hi&gt; &amp;amp;there
+&c</h1>
+<h2>Hi there</h2>""")
+  }
+
+  it("Linecontinuation") {
+    val mod = U.compileModule("""
+namespace A
+
+def test a b
+ h1 | Hi there
+ h2 - testTmpl
+  arg0: | test
+
+def testTmpl args0
+ span | { args0 }
+""")
+    
+    mod.renderTemplate("A.test") should equal(
+"""<h1>Hi there</h1>
+<h2><span>test</span></h2>""")
+  }
+
 }

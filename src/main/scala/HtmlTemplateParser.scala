@@ -62,8 +62,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def tagElem(indent: String): Parser[BaseElem] = 
     (rep1sep(tagPart, forcedWsNoNl) <~ wsNoNl <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ {
       case _tagLst ~ content => {
-	val tagLst = _tagLst reverse
-	
+	val tagLst = (_tagLst reverse)
 	((tagLst tail) foldLeft ((tagLst head) addContent content)) { 
 	  (innerTag, outerTag) => outerTag addContent innerTag 
 	}
@@ -140,7 +139,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def parseArg(indent: String): Parser[(String, BaseElem)] = 
     (identifier <~ ':' <~ nl) ~ newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ tuplify
       
-  def parseArgsOnLevel(indent: String): Parser[List[(String, BaseElem)]] = rep(indent ~> parseArg(indent)) 
+  def parseArgsOnLevel(indent: String): Parser[List[(String, BaseElem)]] = rep(indent ~> parseArg(indent))
 
   def assembleTemplate(namespace: String)(name: String, firstArgs: List[(String, Option[BaseExpression])], 
 		       secondArgs: List[(String, Option[BaseExpression])], body: BaseElem) = {

@@ -3,6 +3,15 @@ package org.bifrost.counterfeiter
 import scala.reflect.AnyValManifest
 import U.Implicits._
 
+object HtmlEscapedString { 
+  def apply(str:  String) = new HtmlEscapedString(str)
+  def escape(str: String) = new HtmlEscapedString(U.escapeHtml(str))
+}
+                                                  
+class HtmlEscapedString(str: String) {
+  override def toString = str
+}
+
 object Expression {
   class ExpressionEvaluationException(msg: String) extends U.CounterFeiterException(msg)
   
@@ -44,10 +53,10 @@ object Expression {
 	} else {
 	  None
 	}
-      } else if (value.isInstanceOf[S]) {
-	Some(value.asInstanceOf[S])
+      } else if (m == goalManifest) {
+        Some(value.asInstanceOf[S])
       } else {
-	None
+        None
       }
     }
   }
@@ -91,7 +100,6 @@ object Expression {
     override def isElementary = false
     override def eval(m: Machine) = new ElementaryListExpression(expr map { _ eval m } :_*)
   }
-      
     
   class CurriedFunctionExpression(fn: FunctionExpression, args: ElementaryExpression*) extends FunctionExpression { 
     assert (fn.numberOfArgs >= args.size)
@@ -235,7 +243,8 @@ object Expression {
   }
   
   class BaseElemExpression(out: HtmlOutput.BaseElem) extends ComplexExpression { 
-    override def eval(m: Machine): ElementaryExpression = new BasicExpression(out eval m)
+    override def eval(m: Machine): ElementaryExpression = 
+      new BasicExpression(HtmlEscapedString(out eval m))
   }
 
   def trueExpression = new BasicExpression[Boolean](true)

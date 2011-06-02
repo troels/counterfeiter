@@ -1,4 +1,5 @@
 package org.bifrost.counterfeiter
+
 import scala.math
 
 object BasicFunctions {
@@ -9,6 +10,12 @@ object BasicFunctions {
   extends FunctionExpression {
     override protected def execute(args: ElementaryExpression*) = f(args :_*)
   }
+
+  def argumentDeconstructor[R, S](f: R => S)(implicit mr: Manifest[R], ms: Manifest[S]) = 
+    {
+      def g(args: ElementaryExpression*) = f(args(0).extractOrThrow[R])
+      g _
+    }
 
   def argumentDeconstructor[R, S, T](f: (R, S) => T)(implicit mr: Manifest[R], ms: Manifest[S], mt: Manifest[T]) = 
     {
@@ -36,7 +43,17 @@ object BasicFunctions {
     } 
   )
   
-  val functionList = List(substring)
+  def escaped = new FunctionExpression { 
+    override def name = "e"
+    override def numberOfArgs = 1
+    
+    override def execute(args: ElementaryExpression*): ElementaryExpression =
+      new BasicExpression[HtmlEscapedString](
+        args(0).extract[HtmlEscapedString] getOrElse 
+        HtmlEscapedString(args(0).extractOrThrow[String]))
+  }
+    
+  val functionList = List(substring, escaped)
   
   val standardPad = new VariablePad(functionList map { f => f.name -> f } toMap)
 }
