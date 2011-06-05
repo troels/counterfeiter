@@ -14,6 +14,10 @@ class HtmlEscapedString(str: String) {
 
 object Expression {
   class ExpressionEvaluationException(msg: String) extends U.CounterFeiterException(msg)
+
+  def getStringEscaped(arg: ElementaryExpression): String =  
+    (arg.extract[HtmlEscapedString] getOrElse HtmlEscapedString.escape(arg.extractOrThrow[String])).toString
+  
   
   def except(format: String, args: Any*) = 
     new ExpressionEvaluationException(format.format(args :_*))
@@ -244,7 +248,7 @@ object Expression {
   
   class BaseElemExpression(out: HtmlOutput.BaseElem) extends ComplexExpression { 
     override def eval(m: Machine): ElementaryExpression = 
-      new BasicExpression(HtmlEscapedString(out eval m))
+      new BasicExpression(HtmlEscapedString (out eval m))
   }
 
   def trueExpression = new BasicExpression[Boolean](true)

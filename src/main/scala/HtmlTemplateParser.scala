@@ -61,15 +61,29 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
 
   def continueAndFindNewIndent(indent: String): Parser[BaseElem] = {
     ((wsNoNl ~> htmlElem(indent) ^^ (Some(_))) | (wsNoNl ~> nl ^^^ None)) ~  
-      newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ {
+      newIndent(indent, parseElemsOnLevel, Some(EmptyElem)) ^^ {
        case opt ~ rest => opt map { x => new ElemList(x, rest) } getOrElse rest
      }
   }
 
+  def cssIdentifier = "[\\w_-]+".r
+  def cssLines(indent: String): Parser[List[(String, String)]] = 
+    rep1(indent ~>
+         rep1((wsNoNl ~> cssIdentifier <~ ':' <~ wsNoNl) ~ ("[^;\r\n]+".r <~ ';')) <~ nl) ^^ {
+      lst => lst flatMap { _ map (tuplify _) }
+    }
+  
+    
   def tagElem(indent: String): Parser[BaseElem] = 
-    (tagPart ~ continueAndFindNewIndent(indent)) ^^ {
-      case tag ~ rest => {
-        tag addContent rest
+    (tagPart ~ (((nl ~> newIndent(indent, cssLines)) ~ newIndent(indent, parseElemsOnLevel, Some(EmptyElem)))
+                | (success(List()) ~ continueAndFindNewIndent(indent)))) ^^ {
+     case tag ~ (css ~ rest) => {
+       val tagWithStyle = if (css isEmpty)
+         tag 
+       else
+         tag addAttrib (
+           "style", new BasicExpression[String](css map { case (k, v) => "%s: %s" format (k, v) } mkString "; "))
+       tagWithStyle addContent rest
       }
     }
   
@@ -80,7 +94,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
     ('-' ~> wsNoNl ~> fullyQualifiedIdentifier ~ 
       rep(wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ~ 
       (wsNoNl ~> rep(namedArgs)) <~ nl) ~
-    newIndent(indent, parseArgsOnLevel, List()) ^^ { 
+    newIndent(indent, parseArgsOnLevel, Some(List())) ^^ { 
       case tmplName ~ posArgs ~ simpleNamedArgs ~ involvedNamedArgs => 
 	new TemplateCall(tmplName, posArgs, 
 			 simpleNamedArgs ++
@@ -94,11 +108,11 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def htmlElem(indent: String): Parser[BaseElem] =
     tagElem(indent) | textElem(indent) | ifElem(indent) | forElem(indent) | templateCallElem(indent)
 
-  def newIndent[T](indent: String, cont: String => Parser[T], alt: T): Parser[T] = 
+  def newIndent[T](indent: String, cont: String => Parser[T], alt: Option[T] = None): Parser[T] = 
     Parser[T] { in =>
       guard(parseLinePrefix(indent))(in) match {
 	case Success(res, next) => cont(res)(next) 
-	case ns: NoSuccess => Success(alt, in)
+	case ns: NoSuccess => alt map { Success(_, in) } getOrElse ns
       }
     }
   
@@ -108,7 +122,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def ifElem(indent: String): Parser[BaseElem] = {
     def ifClause(ifPhrase: String, ind: String, expr: Option[BaseExpression] = None) = {
       (ind ~ "+" ~> wsNoNl ~> ifPhrase ~> wsNoNl ~> (expr map (success(_)) getOrElse expression) <~ wsNoNl <~ nl) ~ 
-       newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ { case expr ~ cons => {
+       newIndent(indent, parseElemsOnLevel, Some(EmptyElem)) ^^ { case expr ~ cons => {
 	 (expr, cons) 
        } } }
     (ifClause("if", "") ~ rep(ifClause("elsif", indent)) ~ 
@@ -129,7 +143,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def forElem(indent: String): Parser[BaseElem] = 
     ("+" ~> wsNoNl ~> "for" ~> wsNoNl ~> "[a-zA-Z_][\\w_]*".r <~ wsNoNl <~ "in" <~ wsNoNl) ~
     (expression <~ nl) ~
-    newIndent(indent, parseElemsOnLevel, EmptyElem) ^^ {
+    newIndent(indent, parseElemsOnLevel, Some(EmptyElem)) ^^ {
 	case variable ~ expr ~ clause => new ForElem(variable, expr, clause)
     }
   
@@ -154,9 +168,9 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def templateDeclaration(namespace: String): Parser[HtmlTemplate] = 
     ("def" ~> forcedWsNoNl ~> identifier ~ rep(
       wsNoNl ~> identifier ~ opt(wsNoNl ~> '=' ~> wsNoNl ~> '{' ~> wsNoNl ~> expression <~ wsNoNl <~ '}') ^^ tuplify)
-     <~ nl) ~ (newIndent("", parseArgsOnLevel, List()) ^^ { 
+     <~ nl) ~ (newIndent("", parseArgsOnLevel, Some(List())) ^^ { 
       lst => lst map { case (k, v) => k -> Some(new Expression.BaseElemExpression(v)) } } ) ~ 
-       newIndent("", parseElemsOnLevel, EmptyElem) ^^ assembleTemplate(namespace)
+       newIndent("", parseElemsOnLevel, Some(EmptyElem)) ^^ assembleTemplate(namespace)
   
   
   def namespaceDeclaration: Parser[String] =

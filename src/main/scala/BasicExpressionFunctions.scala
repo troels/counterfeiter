@@ -52,7 +52,7 @@ object BasicFunctions {
         args(0).extract[HtmlEscapedString] getOrElse 
         HtmlEscapedString(args(0).extractOrThrow[String]))
   }
-    
+  
   val functionList = List(substring, escaped)
   
   val standardPad = new VariablePad(functionList map { f => f.name -> f } toMap)

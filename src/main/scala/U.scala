@@ -80,5 +80,4 @@ object U {
     
   def compileModule(code: String) = 
     new Machine(HtmlTemplateParser.parseModule(code), BasicFunctions.standardPad)
-  
 }

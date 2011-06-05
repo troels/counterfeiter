@@ -21,7 +21,7 @@ object HtmlOutput {
   extends BaseElem {
     def outputAttribs(m: Machine): String = 
       attributes map { 
-	case (k, v) => "%s=\"%s\"".format(k, (v eval m).extractOrThrow[String])
+	case (k, v) => "%s=\"%s\"".format(k, Expression.getStringEscaped(v eval m))
       } mkString " "
 
     override def eval(m: Machine): String = {
@@ -37,6 +37,13 @@ object HtmlOutput {
     def addContent(content: BaseElem*): Tag = 
       new Tag(tag, attributes, this.content ++ content)
     
+    def addAttribs(newAttribs: List[(String, BaseExpression)]) =
+      new Tag(tag, (newAttribs ++ attributes) toMap, content)
+
+    def addAttrib(k: String, v: BaseExpression) =
+      new Tag(tag, attributes + (k -> v), content)
+
+
     override def toString = 
       "Tag: %s, %s: [\n%s\n]".format(tag, attributes, content map { _.toString } mkString "\n")
   }
@@ -48,8 +55,7 @@ object HtmlOutput {
   class Expression(expression: BaseExpression) extends BaseElem { 
     override def eval(m: Machine): String = {
       val expr = expression eval m
-      (expr.extract[HtmlEscapedString] getOrElse
-       (HtmlEscapedString escape expr.extractOrThrow[String])).toString
+      Expression getStringEscaped expr
     }
   }
   

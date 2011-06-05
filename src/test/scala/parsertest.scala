@@ -296,4 +296,20 @@ def testTmpl args0
 <h2><span>test</span></h2>""")
   }
 
+  it("cssmode") {
+    val mod = U.compileModule("""
+namespace A
+
+def test
+ h1
+  height: 10px; width: 10px;
+  border: 1px solid; border-height: 10px; 
+  h2
+   text-color: blue; 
+   | Hello there
+""")
+    
+    mod.renderTemplate("A.test") should equal (
+      """<h1 style="height: 10px; width: 10px; border: 1px solid; border-height: 10px"><h2 style="text-color: blue">Hello there</h2></h1>""")
+  }
 }
