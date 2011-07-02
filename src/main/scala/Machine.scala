@@ -43,7 +43,7 @@ class Machine(val templates: TemplateCollection, val pad: Pad = EmptyPad, val na
     (templates get name) orElse ((templates getFromNamespace namespace)(name)) match {
       case Some(tmpl) =>  tmpl renderTemplate (inNamespace(tmpl.namespace), lst, map)
       case None => throw new U.CounterFeiterException(
-	"Failed to lookup template: %s in namespace %s" format (name, namespace))
+	      "Failed to lookup template: %s in namespace %s" format (name, namespace))
     }
   }
 }

@@ -43,8 +43,8 @@ object Expression {
   class BasicExpression[T](private val value: T)(implicit m: Manifest[T]) extends ElementaryExpression {
     override def equals(that: Any) = {
       that match { 
-	case _that: BasicExpression[_] => _that.value == value
-	case _ => false
+	      case _that: BasicExpression[_] => _that.value == value
+	      case _ => false
       }
     }
 

@@ -17,4 +17,6 @@ object Counterfeiter {
 
   def loadFromDir(dir: File, ext: String = ".cf"): Machine = 
     createCounterfeiter(U.recursivelyGetWithExtension(dir, ext))
+
+  
 }

@@ -1,27 +1,24 @@
 package org.bifrost.counterfeiter.tests
 
-import org.scalatest.Spec
+import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
-import org.scalatest.junit.JUnitRunner
-import org.junit.runner.RunWith
 
 import java.io.File
 
-@RunWith(classOf[JUnitRunner])
-class SimpleTest extends Spec with ShouldMatchers { 
-  import org.bifrost.counterfeiter.{ ExpressionParser, VariablePad, Expression,  HtmlOutput,
-				     BasicFunctions, HtmlTemplateParser, EmptyMachine, U,
-				     Counterfeiter, HtmlEscapedString }
-  import Expression.ElementaryExpression
-  import scala.util.parsing.input.CharSequenceReader
+import org.bifrost.counterfeiter.{ ExpressionParser, VariablePad, Expression,  HtmlOutput,
+				                           BasicFunctions, HtmlTemplateParser, EmptyMachine, U,
+				                           Counterfeiter, HtmlEscapedString }
+import Expression.ElementaryExpression
+import scala.util.parsing.input.CharSequenceReader
 
+class SimpleTest extends FunSuite with ShouldMatchers { 
   def testExpressionParser[T](str: String)(implicit m: Manifest[T]): T = 
     ExpressionParser.expression(new CharSequenceReader(str)) match { 
       case ExpressionParser.Success(res, next) => 
-	res eval EmptyMachine match {
-	  case s: ElementaryExpression => s.extractOrThrow[T]
-	  case other => fail(other.toString)
-	}
+	      res eval EmptyMachine match {
+	        case s: ElementaryExpression => s.extractOrThrow[T]
+	        case other => fail(other.toString)
+	      }
       case o => fail(o.toString)
     }
 
@@ -38,11 +35,11 @@ class SimpleTest extends Spec with ShouldMatchers {
       case o => fail(o.toString)
     }
 	  
-  it("test parse negative number") {
+  test("test parse negative number") {
     testExpressionParser[String]("-123") should equal("-123")
   }
 
-  it("test parse complex expression") {
+  test("test parse complex expression") {
     testExpressionParser[String]("123 + 123 / 123") should equal("124")
     testExpressionParser[String]("true and false xor true") should equal("true")
     testExpressionParser[String]("not true and true") should equal("false")
@@ -53,34 +50,34 @@ class SimpleTest extends Spec with ShouldMatchers {
     testExpressionParser[String]("4 = 1 - (1 - 4) * 1 * -1 * -1") should equal ("true")
   } 
 
-  it("test parse string") {
+  test("test parse string") {
     testExpressionParser[String](""" "Hello I am me" """) should equal ("Hello I am me")
     testExpressionParser[String](""" "Hello" = "Hello" """) should equal ("true")
     testExpressionParser[String](""" "Hello\"there" """) should equal ("Hello\"there")
   }
     
-  it("test basic functions") { 
+  test("test basic functions") { 
     testExpressionParser[String](""" substring "123" 1 2 = "23" """) should equal ("true")
     testExpressionParser[String](""" substring (1 + 1) 0 1 = "2" """) should equal ("true")
   }
 
-  it("test lists") { 
+  test("test lists") { 
     testExpressionParser[String](""" [1,2,3, "a"] """) should equal ("""[1, 2, 3, a]""")
   }
 
-  it("test map") { 
+  test("test map") { 
     testExpressionParser[String](""" {1: 2, "abc": 5, 2 + 2: 9  } """) should equal (
       """{"1": 2, "abc": 5, "4": 9}""")
   }
 
-  it("test primitive templates") {
+  test("test primitive templates") {
     testHtmlTemplateParser(
 """#hello h1(style="display: none")
  | HI THERE
 """) should equal ("""<div id="hello"><h1 style="display: none">HI THERE</h1></div>""")
   }
 
-  it("test tag in tag") {
+  test("test tag in tag") {
     testHtmlTemplateParser(
 """a
  b
@@ -88,7 +85,7 @@ class SimpleTest extends Spec with ShouldMatchers {
 """) should equal ("<a><b><c/></b></a>")
   }
 
-  it("test expression") { 
+  test("test expression") { 
     testHtmlTemplateParser(
 """.hello_class.t2 h1
  | Hi there { 1 + 2 }{1+2}{332+4}
@@ -97,7 +94,7 @@ class SimpleTest extends Spec with ShouldMatchers {
 Where am I?</h1></div>""")
   }
 
-  it("test if") {
+  test("test if") {
    testHtmlTemplateParser(
 """#a
  + if 1 + 2 = 4
@@ -117,14 +114,14 @@ Where am I?</h1></div>""")
 hi there </div></div>""")
   }
 
-  it("test for") {
+  test("test for") {
     testHtmlTemplateParser(
 """+ for a in [1,2,3,"a",  5]
  b(id={a})
   | {a}
 """) should equal ("""<b id="1">1</b><b id="2">2</b><b id="3">3</b><b id="a">a</b><b id="5">5</b>""") }
 
-  it("test parse template") { 
+  test("test parse template") { 
     val tmpl = testHtmlTemplateDeclarationParser(
       """def a b c d
  + if b
@@ -146,7 +143,7 @@ hi there </div></div>""")
 			    
   }
 
-  it("test default arguments") { 
+  test("test default arguments") { 
     val tmpl = testHtmlTemplateDeclarationParser(
 """def a b={3 + 3} c={2} d
  e:
@@ -164,7 +161,7 @@ hi there </div></div>""")
      ) should equal ("""Hello there Something different 6 hi""")
   }
 
-  it("test module parser") {
+  test("test module parser") {
     val module = U.compileModule("""
 def tmpl1 name profession
  | Hello there {name}
@@ -206,7 +203,7 @@ Hi
 you are not a <span>Killer</span></h2>""")
   }
 
-  it("test namespaces") { 
+  test("test namespaces") { 
     val module = U.compileModule("""
 namespace A
 
@@ -233,7 +230,7 @@ def tmpl3
 Hello Arne""")
   }
 
-  it("test indexing lookup") { 
+  test("test indexing lookup") { 
     val mod = U.compileModule("""
 namespace A
 
@@ -249,12 +246,12 @@ def testTemplate
     mod.renderTemplate("A.mapTestTemplate", List()) should equal ("Been there")
   }
 
-  it("Handling directory of templates") { 
+  test("Handling directory of templates") { 
     val machine = Counterfeiter.loadFromDir(
       new File(getClass.getClassLoader.getResource("templatetest").getFile))
   }
   
-  it("htmlescaping") {
+  test("htmlescaping") {
     val mod = U.compileModule("""
 namespace A
 
@@ -278,7 +275,7 @@ def smalltest
 <h2>Hi there</h2>""")
   }
 
-  it("Linecontinuation") {
+  test("Linecontinuation") {
     val mod = U.compileModule("""
 namespace A
 
@@ -296,7 +293,7 @@ def testTmpl args0
 <h2><span>test</span></h2>""")
   }
 
-  it("cssmode") {
+  test("cssmode") {
     val mod = U.compileModule("""
 namespace A
 

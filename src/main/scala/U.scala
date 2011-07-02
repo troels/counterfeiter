@@ -36,7 +36,7 @@ object U {
     } else {
       val lstr = (lst reverse)
       (lstr.tail foldLeft (List[T](lstr.head))) { 
-	(newLst, elem) => elem :: interElem :: newLst
+	      (newLst, elem) => elem :: interElem :: newLst
       }
     }
   }
@@ -49,8 +49,8 @@ object U {
   class OptionWrapper[T](v: Option[T]) {
     def getOrThrow(exc: => Exception) = 
       v match { 
-	case Some(ret) => ret
-	case None => throw exc
+	      case Some(ret) => ret
+	      case None => throw exc
       }
   }
   
