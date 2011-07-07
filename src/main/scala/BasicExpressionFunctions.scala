@@ -35,10 +35,10 @@ object BasicFunctions {
   def substring = StandardFunctionExpression(
     "substring", 3, argumentDeconstructor[String, Int, Int, ElementaryExpression] { 
       (str, _start, len) => {
-	val strLen = str.length
-	val start = math.min(math.max(_start, 0), strLen)
-	val end = math.min(start + len, strLen)
-	new BasicExpression[String](str substring (start, end))
+	      val strLen = str.length
+	      val start = math.min(math.max(_start, 0), strLen)
+	      val end = math.min(start + len, strLen)
+	      new BasicExpression[String](str substring (start, end))
       }
     } 
   )

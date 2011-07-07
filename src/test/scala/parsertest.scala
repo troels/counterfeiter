@@ -8,7 +8,7 @@ import java.io.File
 import org.bifrost.counterfeiter.{ ExpressionParser, VariablePad, Expression,  HtmlOutput,
 				                           BasicFunctions, HtmlTemplateParser, EmptyMachine, U,
 				                           Counterfeiter, HtmlEscapedString }
-import Expression.ElementaryExpression
+import Expression.{ ElementaryExpression, UntypedExpression } 
 import scala.util.parsing.input.CharSequenceReader
 
 class SimpleTest extends FunSuite with ShouldMatchers { 
@@ -224,7 +224,7 @@ def tmpl3
 """)
     
     module.renderTemplate("B.tmpl3", List()) should equal ("Hello Holger")
-    
+
     module.renderTemplate("A.tmpl1", List(new Expression.BasicExpression[String]("Arne"))) should equal (
       """Hello there
 Hello Arne""")
@@ -308,5 +308,26 @@ def test
     
     mod.renderTemplate("A.test") should equal (
       """<h1 style="height: 10px; width: 10px; border: 1px solid; border-height: 10px"><h2 style="text-color: blue">Hello there</h2></h1>""")
+  }
+
+  test("Arbitrary object mode") { 
+    val mod = U.compileModule("""
+namespace A
+
+def test ab
+ h1
+   | Hello there: {ab.cd.de}
+""")
+
+    case class De() { 
+      override def toString = "Troels"
+    }
+    case class Cd(de: De)
+    case class Ab(cd: Cd) 
+    
+    val obj = Ab(Cd(De()))
+
+    mod.renderTemplate("A.test", map=Map("ab" -> new UntypedExpression(obj))) should equal (
+      """<h1>Hello there: Troels</h1>""")
   }
 }

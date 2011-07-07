@@ -22,11 +22,11 @@ object U {
     
     (methods foldLeft Map[String, Any]()) { 
       (map, method) => 
-	if ((fields contains method.getName) && (method.getTypeParameters.size == 0)) {
-	  map + (method.getName -> method.invoke(obj))
-	 } else {
-	   map
-	 }
+	      if ((fields contains method.getName) && (method.getTypeParameters.size == 0)) {
+	        map + (method.getName -> method.invoke(obj))
+	      } else {
+	        map
+	      }
     }
   }
 

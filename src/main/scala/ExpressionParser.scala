@@ -47,8 +47,9 @@ object ExpressionParser extends RegexParsers {
       case (id ~ args) => new ApplicationExpression(id, args: _*)
     }
 
+  def identifierRegex = "[a-zA-Z_][\\w_]*".r
   def identifier: Parser[BaseExpression] = not(operator) ~> (
-    ("[a-zA-Z_][\\w_]*(\\.[a-zA-Z_][\\w_]*)*".r ^^ (new VariableExpression(_))) | 
+    (identifierRegex ^^ (new VariableExpression(_))) | 
     ('(' ~> ws ~> operator <~ ws <~ ')'))
   
   def subexpression: Parser[BaseExpression] = '(' ~> ws ~> expression <~ ws <~ ')'
@@ -57,16 +58,24 @@ object ExpressionParser extends RegexParsers {
   case class Term(expr: BaseExpression) extends LinePart
   case class BinaryOperator(op: BinaryOperatorFunction) extends LinePart
   
+  class SEHelper()
+  case class StringKeeper(str: String) extends SEHelper
+  case class SEKeeper(se: BaseExpression) extends SEHelper
   def simpleExpression: Parser[BaseExpression] = 
     (ws ~> (
       stringExpression | numberExpression | booleanExpression | 
       listExpression | mapExpression | identifier | subexpression) ~ 
-      rep(ws ~> '[' ~> ws ~> simpleExpression <~ ws <~ ']')) ^^ { 
-	case expr ~ lookups => 
-	  (lookups foldLeft expr) {
-	    (accum, lookup) => new Pickout(accum, lookup)
-	  }
-      }
+     rep(('.' ~> identifierRegex ^^ (StringKeeper(_))) | 
+         (ws ~> '[' ~> ws ~> (simpleExpression ^^ (SEKeeper(_))) <~ ws <~ ']'))) ^^ { 
+	   case expr ~ lookups => 
+	     (lookups foldLeft expr) {
+	       (accum, lookup) => 
+           lookup match { 
+             case StringKeeper(str) => new DottedExpression(accum, str)
+             case SEKeeper(se) => new Pickout(accum, se)
+	         }
+       }
+  }
 	    
 
   def simpleExpressionWithUnaryPrefix: Parser[BaseExpression] = 
@@ -82,7 +91,7 @@ object ExpressionParser extends RegexParsers {
   def binaryExpression: Parser[List[LinePart]] = 
     term ~  rep(ws ~> binaryOperator ~ (ws ~> term)) ^^ { 
       case lp0 ~ lst =>
-	lp0 :: ( lst flatMap { case op ~ lp => List(BinaryOperator(op) , lp)} )
+	      lp0 :: ( lst flatMap { case op ~ lp => List(BinaryOperator(op) , lp)} )
     }
 
   def expression: Parser[BaseExpression] = 
@@ -113,7 +122,7 @@ object ExpressionParser extends RegexParsers {
       }
       
       case o => {
-	throw except("Failed to do anythin sensible with %s", o.toString)()
+	      throw except("Failed to do anythin sensible with %s", o.toString)()
       }
     }
   }

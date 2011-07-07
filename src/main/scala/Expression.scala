@@ -7,7 +7,7 @@ object HtmlEscapedString {
   def apply(str:  String) = new HtmlEscapedString(str)
   def escape(str: String) = new HtmlEscapedString(U.escapeHtml(str))
 }
-                                                  
+
 class HtmlEscapedString(str: String) {
   override def toString = str
 }
@@ -34,29 +34,58 @@ object Expression {
     
     def extractOrThrow[T](implicit manifest: Manifest[T]): T = 
       extract[T] match { 
-	case Some(v) => v
-	case None => throw except(
-	  "Failed to extract type '%s' from %s", manifest.toString, toString)
+        case Some(v) => v
+        case None => throw except(
+          "Failed to extract type '%s' from %s", manifest.toString, toString)
       }
   }
-  
+
+
+  // UntypedExpression / BasicExpression's respective responsibilities need to be clarified 
+  // or one of them removed.
+  class UntypedExpression(private val value: AnyRef) extends ElementaryExpression {
+    override def equals(that: Any) = {
+      that match {
+        case _that: UntypedExpression => _that.value == value
+        case _ => false
+      }
+    }
+
+    override def extract[S](implicit ms: Manifest[S]): Option[S] =  {
+      if (ms == manifest[AnyRef]) {
+        Some(value.asInstanceOf[S])
+      } else if (ms == manifest[List[_]] && value.isInstanceOf[List[_]]) {
+        Some((value.asInstanceOf[List[AnyRef]] map { v => new UntypedExpression(v) }).asInstanceOf[S])
+      } else if (ms == manifest[Map[_, _]] && value.isInstanceOf[Map[_, _]]) {
+        Some((value.asInstanceOf[Map[AnyRef, AnyRef]] map { 
+          case (k, v) => k.toString -> new UntypedExpression(v) 
+        }).asInstanceOf[S])
+      } else if (ms == manifest[String]) { 
+        Some(value.toString.asInstanceOf[S])
+      } else {
+        None
+      }
+    }
+  }
+
+    
   class BasicExpression[T](private val value: T)(implicit m: Manifest[T]) extends ElementaryExpression {
     override def equals(that: Any) = {
       that match { 
-	      case _that: BasicExpression[_] => _that.value == value
-	      case _ => false
+        case _that: BasicExpression[_] => _that.value == value
+        case _ => false
       }
     }
 
     override def extract[S](implicit goalManifest: Manifest[S]): Option[S] = {
       if (goalManifest == manifest[String]) {
-	Some(value.toString.asInstanceOf[S])
+        Some(value.toString.asInstanceOf[S])
       } else if (m.isInstanceOf[AnyValManifest[_]]) {
-	if (m == goalManifest) {
-	  Some(value.asInstanceOf[S])
-	} else {
-	  None
-	}
+        if (m == goalManifest) {
+          Some(value.asInstanceOf[S])
+        } else {
+          None
+        }
       } else if (m == goalManifest) {
         Some(value.asInstanceOf[S])
       } else {
@@ -68,14 +97,14 @@ object Expression {
   class ElementaryMapExpression(expr: (String, ElementaryExpression)*) extends ElementaryExpression {
     override def extract[T](implicit m: Manifest[T]): Option[T] = 
       if (m == manifest[Map[String, ElementaryExpression]]) { 
-	Some(map.asInstanceOf[T])
+        Some(map.asInstanceOf[T])
       } else if (m == manifest[String]) { 
-	Some("{%s}".format(expr map { 
-	  case (k, v) => "\"%s\": %s".format(k, v.extractOrThrow[String]) } mkString ", " ).asInstanceOf[T])
+        Some("{%s}".format(expr map { 
+          case (k, v) => "\"%s\": %s".format(k, v.extractOrThrow[String]) } mkString ", " ).asInstanceOf[T])
       } else {
-	None
+        None
       }
-		      
+    
     def map: Map[String, ElementaryExpression] = expr toMap
     def lookup(str: String) = map(str)
   }
@@ -84,19 +113,19 @@ object Expression {
     override def isElementary = false
     override def eval(m: Machine) = 
       new ElementaryMapExpression(expr map { 
-	case (k, v) => (k eval m).extractOrThrow[String] -> (v eval m) } :_*)
+        case (k, v) => (k eval m).extractOrThrow[String] -> (v eval m) } :_*)
   }  
   
   class ElementaryListExpression(expr: ElementaryExpression*) extends ElementaryExpression {
     override def extract[T](implicit m: Manifest[T]): Option[T] = 
       if (m == manifest[List[ElementaryExpression]]) { 
-	Some(toList.asInstanceOf[T])
+        Some(toList.asInstanceOf[T])
       } else if (m == manifest[String]) { 
-	Some(("[%s]" format (expr map {  _.extractOrThrow[String] } mkString ", ")).asInstanceOf[T])
+        Some(("[%s]" format (expr map {  _.extractOrThrow[String] } mkString ", ")).asInstanceOf[T])
       } else {
-	None
+        None
       }
-      
+    
     def toList: List[ElementaryExpression] = expr toList
   }
 
@@ -104,7 +133,7 @@ object Expression {
     override def isElementary = false
     override def eval(m: Machine) = new ElementaryListExpression(expr map { _ eval m } :_*)
   }
-    
+  
   class CurriedFunctionExpression(fn: FunctionExpression, args: ElementaryExpression*) extends FunctionExpression { 
     assert (fn.numberOfArgs >= args.size)
 
@@ -123,12 +152,12 @@ object Expression {
 
     def apply(args: ElementaryExpression*): ElementaryExpression = 
       if (args.length > numberOfArgs) {
-	throw except("Too many arguments to function %s; expected: %d, got %d",
-		     toString, numberOfArgs, args.length)
+        throw except("Too many arguments to function %s; expected: %d, got %d",
+                     toString, numberOfArgs, args.length)
       } else if (args.length < numberOfArgs) {
-	new CurriedFunctionExpression(this, args: _*)
+        new CurriedFunctionExpression(this, args: _*)
       } else  {
-	execute(args :_*)
+        execute(args :_*)
       }
     
     override def toString = "Function: %s".format(name)
@@ -136,9 +165,9 @@ object Expression {
   }
   
   abstract class BinaryOperatorFunction(override val name: String, val priority: Int)
-  extends FunctionExpression {
-    override def numberOfArgs = 2
-  }
+           extends FunctionExpression {
+             override def numberOfArgs = 2
+           }
 
   abstract class UnaryOperatorFunction(override val name: String) extends FunctionExpression {
     override def numberOfArgs = 1
@@ -184,25 +213,25 @@ object Expression {
     }
   }
   object NotEqualsFunction extends BinaryOperatorFunction("!=", 3) {
-     override protected def execute(args: ElementaryExpression*) =
+    override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0) != args(1))
   }
 
   object NotFunction extends UnaryOperatorFunction("not") {
-     override protected def execute(args: ElementaryExpression*) =
-       new BasicExpression(!args(0).extractOrThrow[Boolean])
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(!args(0).extractOrThrow[Boolean])
   }
 
   object UnaryMinusFunction extends UnaryOperatorFunction("-") {
-     override protected def execute(args: ElementaryExpression*) =
-       new BasicExpression(-args(0).extractOrThrow[Int])
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(-args(0).extractOrThrow[Int])
   }
 
   val binaryOperators = List(MultiplyFunction, PlusFunction,   MinusFunction, 
-			     DivideFunction,   AndFunction,    OrFunction, 
-			     XorFunction,      EqualsFunction, NotEqualsFunction)
+                             DivideFunction,   AndFunction,    OrFunction, 
+                             XorFunction,      EqualsFunction, NotEqualsFunction)
   val binaryOperatorMap = (binaryOperators map { op => op.name -> op })
-                          .toMap[String, BinaryOperatorFunction]
+    .toMap[String, BinaryOperatorFunction]
   
   val unaryOperators = List(NotFunction, UnaryMinusFunction)
   val unaryOperatorMap = (unaryOperators map { op => op.name -> op }) toMap
@@ -217,17 +246,17 @@ object Expression {
       val _elem = elem eval m
 
       ((_from.extract[List[ElementaryExpression]]) map { 
-	lst => {
-	  val num = _elem.extractOrThrow[Int] 
-	  if (num >= lst.size) 
-	    throw except("Index out of bounds: %d in list %s", num, lst)
-	  lst(_elem.extractOrThrow[Int])
-	}
+        lst => {
+          val num = _elem.extractOrThrow[Int] 
+          if (num >= lst.size) 
+            throw except("Index out of bounds: %d in list %s", num, lst)
+          lst(_elem.extractOrThrow[Int])
+        }
       }) orElse (_from.extract[Map[String, ElementaryExpression]] map {
-	map => {
-	  val str = _elem.extractOrThrow[String]
-	  map getOrThrow (str, except("No key: %s in map %s", str, map))
-	}
+        map => {
+          val str = _elem.extractOrThrow[String]
+          map getOrThrow (str, except("No key: %s in map %s", str, map))
+        }
       }) getOrThrow except("Expected list or map, got: %s", _from)
     }
   }
@@ -235,12 +264,33 @@ object Expression {
   class ApplicationExpression(val func: BaseExpression, val args: BaseExpression*) extends ComplexExpression {
     override def eval(m: Machine): ElementaryExpression = {
       func eval m match {
-	case f: FunctionExpression => f(args map { _ eval m } :_*)
-	case g => g 
+        case f: FunctionExpression => f(args map { _ eval m } :_*)
+        case g => g 
       }
     }
   }
   
+  class DottedExpression(val part1: BaseExpression, val part2: String) extends ComplexExpression { 
+    override def eval(m: Machine): ElementaryExpression = {
+      val obj = part1 eval m
+      
+      obj match { 
+        case exp: UntypedExpression => {
+          val inner = exp.extractOrThrow[AnyRef]
+          
+          val clz = inner getClass
+          val method = clz getMethod part2
+
+          method match {
+            case null => throw except("Object %s lacks method %s.", obj.toString, part2)
+            case m => new UntypedExpression(m invoke inner)
+          }
+        }
+        case o => throw except("Expected UntypedExpression got a %s", o.toString)
+      }
+    }
+  }
+
   class VariableExpression(variable: String) extends ComplexExpression { 
     override def eval(m: Machine): ElementaryExpression = 
       m.pad lookup variable getOrThrow except("%s is undefined" format variable)
