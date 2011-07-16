@@ -317,17 +317,35 @@ namespace A
 def test ab
  h1
    | Hello there: {ab.cd.de}
+   | 2 + 2 = { 2 + ab.cd.two }
 """)
 
     case class De() { 
       override def toString = "Troels"
     }
-    case class Cd(de: De)
+    case class Cd(de: De) {
+      val two = 2
+    }
     case class Ab(cd: Cd) 
     
     val obj = Ab(Cd(De()))
 
     mod.renderTemplate("A.test", map=Map("ab" -> new UntypedExpression(obj))) should equal (
-      """<h1>Hello there: Troels</h1>""")
+      """<h1>Hello there: Troels
+2 + 2 = 4</h1>""")
   }
+
+  test("test attributes") { 
+    val str = """
+namespace A
+
+def test 
+ h1  (a-b="hello \"there\"")
+   | 2 + 2 = 4
+"""
+
+    val mod  = U.compileModule(str)
+    mod.renderTemplate("A.test") should equal (
+      """<h1 a-b="hello &quot;there&quot;">2 + 2 = 4</h1>""")
+    }
 }

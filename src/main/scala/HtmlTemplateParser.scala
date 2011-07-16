@@ -30,10 +30,12 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   }
 
   def verbatimExpression: Parser[BaseExpression] = 
-    '"' ~> "[^\"]*".r <~ '"' ^^ (new BasicExpression[String](_))
+    '"' ~> rep("[^\"\\\\]+".r | ("\\\\[\"\\\\]".r ^^ (_ substring 1))) <~ '"' ^^ { 
+      expr => new BasicExpression[String](expr mkString "")
+    }
     
   def tagAttributeList: Parser[Map[String, BaseExpression]] = 
-    rep1sep(("[a-zA-Z]\\w*".r <~ ws <~ '=' <~ ws) ~ (('{' ~> ws ~> expression <~ ws <~ '}') | verbatimExpression) ^^ 
+    ws ~> rep1sep(("[a-zA-Z][-_\\w]*".r <~ ws <~ '=' <~ ws) ~ (('{' ~> ws ~> expression <~ ws <~ '}') | verbatimExpression) ^^ 
 	    { case a ~ b => a -> b } , forcedWs) ^^ { 
       _ toMap 
     }
@@ -45,6 +47,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
 
     new Tag(tagName, attributeList ++ 
 	    List(idAttr map { "id" -> new BasicExpression[String](_) },
+
 		 if (classAttrList isEmpty) None else Some(
 		   "class" -> new BasicExpression[String](classAttrList mkString " "))).flatten)
   }
@@ -57,7 +60,7 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
       opt(idPart) ~ rep(classPart)) |
      (success(Some("div")) ~ (idPart ^^ (Some(_))) ~ rep(classPart)) |
      (success(Some("div")) ~ success(None) ~ rep1(classPart))) ~ 
-     opt('(' ~> ws ~> tagAttributeList <~ ws <~ ')') ^^ assembleTag
+     opt(ws ~> '(' ~> ws ~> tagAttributeList <~ ws <~ ')') ^^ assembleTag
 
   def continueAndFindNewIndent(indent: String): Parser[BaseElem] = {
     ((wsNoNl ~> htmlElem(indent) ^^ (Some(_))) | (wsNoNl ~> nl ^^^ None)) ~  

@@ -108,17 +108,17 @@ object ExpressionParser extends RegexParsers {
 
       // Parser operator
       case Term(t) :: (op: BinaryOperator) ::  tail => {
-	if (op.op.priority <= priority) {
-	  lst
-	} else if (tail isEmpty) {
-	  List(Term(new ApplicationExpression(op.op, t)))
-	} else {
-	  parseLineParts(tail, op.op.priority) match {
-	    case Term(t2) :: tail => parseLineParts(
-	      Term(new ApplicationExpression(op.op, t, t2)) :: tail, priority)
-	    case o => throw except("Internal error, excepted list with term as start, got: %s", o)()
-	  }
-	}
+	      if (op.op.priority <= priority) {
+	        lst
+	      } else if (tail isEmpty) {
+	        List(Term(new ApplicationExpression(op.op, t)))
+	        } else {
+	          parseLineParts(tail, op.op.priority) match {
+	            case Term(t2) :: tail => parseLineParts(
+	              Term(new ApplicationExpression(op.op, t, t2)) :: tail, priority)
+	            case o => throw except("Internal error, excepted list with term as start, got: %s", o)()
+	          }
+	        }
       }
       
       case o => {

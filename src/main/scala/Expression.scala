@@ -62,8 +62,11 @@ object Expression {
         }).asInstanceOf[S])
       } else if (ms == manifest[String]) { 
         Some(value.toString.asInstanceOf[S])
+      } else if ((ms == manifest[Int] || ms == manifest[java.lang.Integer])  && 
+                 value.isInstanceOf[java.lang.Integer]) {
+        Some(value.asInstanceOf[S])
       } else {
-        None
+         None
       }
     }
   }
