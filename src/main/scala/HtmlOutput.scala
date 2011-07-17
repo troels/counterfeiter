@@ -23,15 +23,17 @@ object HtmlOutput {
       attributes map { 
 	case (k, v) => "%s=\"%s\"".format(k, Expression.getStringEscaped(v eval m))
       } mkString " "
+    
+    def nonSelfClosingTabs = List("div", "span", "script", "link")
 
     override def eval(m: Machine): String = {
       val attribs = outputAttribs(m)
       val attribsOut = if (attribs isEmpty) "" else " " + attribs
-      val evaledContent = content map ( _ eval m ) mkString "\n"
-      if (evaledContent isEmpty) 
-	"<%s%s/>".format(tag, attribsOut)
+      val evaledContent = content map { _ eval m } mkString "\n"
+      if ((evaledContent isEmpty) && !(nonSelfClosingTabs contains tag)) 
+	      "<%s%s/>".format(tag, attribsOut)
       else 
-	"<%s%s>%s</%s>".format(tag, attribsOut, evaledContent, tag)
+	      "<%s%s>%s</%s>".format(tag, attribsOut, evaledContent, tag)
     }
 
     def addContent(content: BaseElem*): Tag = 
