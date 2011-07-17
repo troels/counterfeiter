@@ -363,4 +363,63 @@ def test
     mod.renderTemplate("A.test") should equal (
       """<ul><li href="c">3</li><li href="45">10</li></ul>""")
     }
+
+  test("test list from method and untypedexpression") { 
+    val str = """
+namespace A
+
+def test arg
+ ul + for a in arg.method
+  li(href={a.link}) | {a.name}
+"""
+    
+    case class ArgType(link: String, name:  String)
+    case class ArgList(args: ArgType*) {
+      def method: List[ArgType] = args toList
+    }
+    val mod  = U.compileModule(str)
+    
+    val arg = Map("arg" -> new UntypedExpression(ArgList(ArgType("hello", "there"), ArgType("goodbye", "again"))))
+    mod.renderTemplate("A.test", map=arg)  should equal (
+      """<ul><li href="hello">there</li><li href="goodbye">again</li></ul>""")
+  }
+
+  test("test is greater than") { 
+    case class TestType(val arg: Int)
+    val str = """
+namespace A
+    
+def test arg
+ + if arg.arg < 3
+   | Hello there
+ + else 
+   | Hi there
+"""
+    
+    val mod  = U.compileModule(str)
+
+    val args = Map("arg" -> new UntypedExpression(TestType(2)))
+    mod.renderTemplate("A.test", map=args) should equal("Hello there")
+    val args2 = Map("arg" -> new UntypedExpression(TestType(4)))
+    mod.renderTemplate("A.test", map=args2) should equal("Hi there")
+  }
+
+  test("for loop counter") { 
+    case class TestType(val arg: Int)
+    val str = """
+namespace A
+    
+def test
+ + for a in [1,2,3,4,5]
+  + if for_loop_index_a >= 3
+    | Hello
+  + else
+    | hi
+"""
+    
+    val mod  = U.compileModule(str)
+
+    mod.renderTemplate("A.test") should equal ("hihihiHelloHello")
+  }
+
 }

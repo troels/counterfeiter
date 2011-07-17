@@ -1,6 +1,7 @@
 package org.bifrost.counterfeiter
 
 import scala.reflect.AnyValManifest
+import scala.collection.JavaConversions._
 import U.Implicits._
 
 object HtmlEscapedString { 
@@ -54,9 +55,12 @@ object Expression {
     override def extract[S](implicit ms: Manifest[S]): Option[S] =  {
       if (ms == manifest[AnyRef]) {
         Some(value.asInstanceOf[S])
-      } else if (ms == manifest[List[_]] && value.isInstanceOf[List[_]]) {
+      } else if (ms.erasure == classOf[List[_]] && value.isInstanceOf[java.util.List[_]]) {
+        Some(((value.asInstanceOf[java.util.List[AnyRef]] toList) map {
+          v => new UntypedExpression(v) } toList).asInstanceOf[S])
+      } else if (ms.erasure == manifest[List[_]].erasure && value.isInstanceOf[List[_]]) {
         Some((value.asInstanceOf[List[AnyRef]] map { v => new UntypedExpression(v) }).asInstanceOf[S])
-      } else if (ms == manifest[Map[_, _]] && value.isInstanceOf[Map[_, _]]) {
+      } else if (ms.erasure == manifest[Map[_, _]].erasure && value.isInstanceOf[Map[_, _]]) {
         Some((value.asInstanceOf[Map[AnyRef, AnyRef]] map { 
           case (k, v) => k.toString -> new UntypedExpression(v) 
         }).asInstanceOf[S])
@@ -215,6 +219,31 @@ object Expression {
       new BasicExpression(args(0) == args(1))
     }
   }
+
+  object LessThanFunction extends BinaryOperatorFunction("<", 3) {
+    override protected def execute(args: ElementaryExpression*) = {
+      new BasicExpression(args(0).extractOrThrow[Int] < args(1).extractOrThrow[Int])
+    }
+  }
+
+  object LessThanOrEqualFunction extends BinaryOperatorFunction("<=", 3) {
+    override protected def execute(args: ElementaryExpression*) = {
+      new BasicExpression(args(0).extractOrThrow[Int] <= args(1).extractOrThrow[Int])
+    }
+  }
+
+  object GreaterThanFunction extends BinaryOperatorFunction(">", 3) {
+    override protected def execute(args: ElementaryExpression*) = {
+      new BasicExpression(args(0).extractOrThrow[Int] > args(1).extractOrThrow[Int])
+    }
+  }
+
+  object GreaterThanOrEqualFunction extends BinaryOperatorFunction(">=", 3) {
+    override protected def execute(args: ElementaryExpression*) = {
+      new BasicExpression(args(0).extractOrThrow[Int] >= args(1).extractOrThrow[Int])
+    }
+  }
+
   object NotEqualsFunction extends BinaryOperatorFunction("!=", 3) {
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0) != args(1))
@@ -232,7 +261,9 @@ object Expression {
 
   val binaryOperators = List(MultiplyFunction, PlusFunction,   MinusFunction, 
                              DivideFunction,   AndFunction,    OrFunction, 
-                             XorFunction,      EqualsFunction, NotEqualsFunction)
+                             XorFunction,      EqualsFunction, NotEqualsFunction,
+                             LessThanFunction, LessThanOrEqualFunction, 
+                             GreaterThanFunction, GreaterThanOrEqualFunction)
   val binaryOperatorMap = (binaryOperators map { op => op.name -> op })
     .toMap[String, BinaryOperatorFunction]
   

@@ -1,6 +1,6 @@
 package org.bifrost.counterfeiter
 
-import org.bifrost.counterfeiter.Expression.{BaseExpression, ElementaryExpression}
+import org.bifrost.counterfeiter.Expression.{BaseExpression, ElementaryExpression, BasicExpression}
 import scala.collection.immutable.ListMap
 
 object HtmlOutput {
@@ -21,7 +21,7 @@ object HtmlOutput {
   extends BaseElem {
     def outputAttribs(m: Machine): String = 
       attributes map { 
-	case (k, v) => "%s=\"%s\"".format(k, Expression.getStringEscaped(v eval m))
+	      case (k, v) => "%s=\"%s\"".format(k, Expression.getStringEscaped(v eval m))
       } mkString " "
     
     def nonSelfClosingTabs = List("div", "span", "script", "link")
@@ -71,53 +71,55 @@ object HtmlOutput {
   class IfElem(clauses: (BaseExpression, BaseElem)*) extends BaseElem{
     override def eval(m: Machine) = 
       clauses find { case (cond, _) => (cond eval m).extractOrThrow[Boolean] } map {
-	case (_, elem) => elem eval m } getOrElse ""
+	      case (_, elem) => elem eval m } getOrElse ""
   }
-
+  
   class ForElem(variable: String, range: BaseExpression, clauses: BaseElem) extends BaseElem{
     override def eval(m: Machine) = {
-      (range eval m).extractOrThrow[List[ElementaryExpression]] map { 
-	i => clauses eval (m newPad Map(variable -> i))
+      (range eval m).extractOrThrow[List[ElementaryExpression]].zipWithIndex map { 
+	      case (v, idx) => clauses eval (m newPad Map(
+          variable -> v, "for_loop_index_" + variable -> new BasicExpression[Int](idx)))
       } mkString ""
     }
   }
 
   class TemplateCall(templateName: String, positionalArguments: List[BaseExpression], 
-		     namedArguments: Map[String, BaseExpression]) extends BaseElem {
+		                 namedArguments: Map[String, BaseExpression]) extends BaseElem {
     override def eval(m: Machine) = 
       m.renderTemplate(templateName, positionalArguments map { _ eval m },
-		       namedArguments mapValues  { _ eval m })
+		                   namedArguments mapValues  { _ eval m })
   }
   
   class HtmlTemplate(val name: String, val namespace: String,
-		     argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
-		     content: BaseElem) {
+		                 argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
+		                 content: BaseElem) {
 
     def fullName = U.joinNamespaceParts(namespace, name)
 
     def renderTemplate(m: Machine, namedArguments: Map[String, ElementaryExpression]): String = {
       val allArguments = argumentTemplate map {
-	case (name, default) => 
-	  namedArguments get name orElse default match {
-	    case Some(value) => (name -> value)
-	    case None => throw except("Missing argument: %s", name)
-	  }
+	      case (name, default) => 
+	        namedArguments get name orElse default match {
+	          case Some(value) => (name -> value)
+	            case None => throw except("Missing argument: %s", name)
+	        }
       }
 
       content eval (m newPad allArguments)
     }
 
-    def renderTemplate(m: Machine,
+    def renderTemplate(
+      m: Machine,
       positionalArguments: List[ElementaryExpression], namedArguments: Map[String, ElementaryExpression]): String = {
       val newNamedArgs = positionalArguments zip argumentTemplate map {
-	case (arg, (name, _)) => 
-	  if (namedArguments contains name) 
-	    throw except("Argument %s given twice".format(name))
-	  else 
-	    (name -> arg)
+	      case (arg, (name, _)) => 
+	        if (namedArguments contains name) 
+	          throw except("Argument %s given twice".format(name))
+	        else 
+	          (name -> arg)
       }
 
-	renderTemplate(m, namedArguments ++ newNamedArgs)
+	    renderTemplate(m, namedArguments ++ newNamedArgs)
     }
     
     def renderTemplate(m: Machine, positionalArguments: List[ElementaryExpression]): String =
