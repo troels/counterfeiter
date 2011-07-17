@@ -348,4 +348,19 @@ def test
     mod.renderTemplate("A.test") should equal (
       """<h1 a-b="hello &quot;there&quot;">2 + 2 = 4</h1>""")
     }
+
+  test("test list with hashes") { 
+    val str = """
+namespace A
+
+def test 
+ ul + for a in [{"b": "c", "d": 3}, 
+             {"b": 45, "d": 10}]
+  li(href={a["b"]}) | {a["d"]}
+"""
+
+    val mod  = U.compileModule(str)
+    mod.renderTemplate("A.test") should equal (
+      """<ul><li href="c">3</li><li href="45">10</li></ul>""")
+    }
 }

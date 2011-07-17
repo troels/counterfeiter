@@ -14,6 +14,7 @@ object ExpressionParser extends RegexParsers {
     () => new CounterfeiterParserException(format.format(args :_*))
 
   def ws = "[ \t]*".r
+  def wsNl = "[ \t\r\n]*".r
   def string: Parser[String] = ('"' ~> "(?:[^\"\\\\]+|\\\\.)+".r <~ '"') ^^ { 
     str => str.replaceAll("\\\\(.)", "$1")
   }
@@ -27,11 +28,11 @@ object ExpressionParser extends RegexParsers {
     ("false(?!\\w)".r ^^^ (new BasicExpression[Boolean](false)))
   
   def listExpression: Parser[ListExpression] = 
-    ws ~> "[" ~> repsep(ws ~> expression <~ ws, ",") <~ "]" <~ ws ^^ { lst =>
+    ws ~> '[' ~> repsep(wsNl ~> expression <~ wsNl, ",") <~ "]" <~ ws ^^ { lst =>
       new ListExpression(lst :_*) }
   
   def mapExpression: Parser[MapExpression] = 
-    ws ~> "{" ~> repsep((ws ~> expression <~ ws <~ ':' <~ ws) ~ (expression <~ ws), ',') <~ "}" <~ ws ^^ {
+    ws ~> "{" ~> repsep((wsNl ~> expression <~ wsNl <~ ':' <~ wsNl) ~ (expression <~ wsNl), ',') <~ "}" <~ ws ^^ {
       exprs => new MapExpression(exprs map { case k ~ v => k -> v } :_* ) }
 
   def operator: Parser[FunctionExpression] = binaryOperator | unaryOperator

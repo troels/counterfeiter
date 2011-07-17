@@ -88,7 +88,7 @@ object HtmlOutput {
       m.renderTemplate(templateName, positionalArguments map { _ eval m },
 		       namedArguments mapValues  { _ eval m })
   }
-
+  
   class HtmlTemplate(val name: String, val namespace: String,
 		     argumentTemplate: ListMap[String, Option[ElementaryExpression]], 
 		     content: BaseElem) {
