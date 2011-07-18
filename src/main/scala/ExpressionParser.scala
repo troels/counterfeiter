@@ -15,7 +15,7 @@ object ExpressionParser extends RegexParsers {
 
   def ws = "[ \t]*".r
   def wsNl = "[ \t\r\n]*".r
-  def string: Parser[String] = ('"' ~> "(?:[^\"\\\\]+|\\\\.)+".r <~ '"') ^^ { 
+  def string: Parser[String] = ('"' ~> "(?:[^\"\\\\]+|\\\\.)*".r <~ '"') ^^ { 
     str => str.replaceAll("\\\\(.)", "$1")
   }
 
