@@ -422,4 +422,24 @@ def test
     mod.renderTemplate("A.test") should equal ("hihihiHelloHello")
   }
 
+  test("boolean condition") { 
+    case class TestType(val arg: Int)
+    val str = """
+namespace A
+    
+def test arg
+ + if arg
+  | Hello
+ + else
+  | Goodbye
+
+def main
+ - test { 1 < 2 }
+ - test { 1 > 2 }
+"""
+    
+    val mod  = U.compileModule(str)
+
+    mod.renderTemplate("A.main") should equal ("Hello\nGoodbye")
+  }
 }
