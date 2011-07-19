@@ -442,4 +442,18 @@ def main
 
     mod.renderTemplate("A.main") should equal ("Hello\nGoodbye")
   }
+
+  test("string concatenation") { 
+    case class TestType(val arg: Int)
+    val str = """
+namespace A
+    
+def main
+ | {"a" ++ "b" ++ "c"}
+"""
+    
+    val mod  = U.compileModule(str)
+
+    mod.renderTemplate("A.main") should equal ("abc")
+  }
 }

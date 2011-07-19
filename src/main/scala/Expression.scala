@@ -192,6 +192,10 @@ object Expression {
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Int] + args(1).extractOrThrow[Int])
   }
+  object ConcatFunction extends BinaryOperatorFunction("++", 4) {
+    override protected def execute(args: ElementaryExpression*) =
+      new BasicExpression(args(0).extractOrThrow[String] + args(1).extractOrThrow[String])
+  }
   object MinusFunction extends BinaryOperatorFunction("-", 4) { 
     override protected def execute(args: ElementaryExpression*) =
       new BasicExpression(args(0).extractOrThrow[Int] - args(1).extractOrThrow[Int])
@@ -266,6 +270,7 @@ object Expression {
   val binaryOperators = List(MultiplyFunction, PlusFunction,   MinusFunction, 
                              DivideFunction,   AndFunction,    OrFunction, 
                              XorFunction,      EqualsFunction, NotEqualsFunction,
+                             ConcatFunction, 
                              LessThanFunction, LessThanOrEqualFunction, 
                              GreaterThanFunction, GreaterThanOrEqualFunction)
   val binaryOperatorMap = (binaryOperators map { op => op.name -> op })
