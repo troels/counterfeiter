@@ -11,6 +11,9 @@ object HtmlEscapedString {
 
 class HtmlEscapedString(str: String) {
   override def toString = str
+  
+  override def equals(obj: Any): Boolean =
+    return obj.isInstanceOf[HtmlEscapedString] && obj.asInstanceOf[HtmlEscapedString].toString == toString
 }
 
 object Expression {
@@ -53,9 +56,7 @@ object Expression {
     }
 
     override def extract[S](implicit ms: Manifest[S]): Option[S] =  {
-      if (ms == manifest[AnyRef]) {
-        Some(value.asInstanceOf[S])
-      } else if (ms.erasure == classOf[List[_]] && value == null) { 
+      if (ms.erasure == classOf[List[_]] && value == null) { 
         Some(List().asInstanceOf[S])
       } else if (ms.erasure == classOf[List[_]] && value.isInstanceOf[java.util.List[_]]) {
         Some(((value.asInstanceOf[java.util.List[AnyRef]] toList) map {
@@ -68,11 +69,23 @@ object Expression {
         Some((value.asInstanceOf[Map[AnyRef, AnyRef]] map { 
           case (k, v) => k.toString -> new UntypedExpression(v) 
         }).asInstanceOf[S])
+      } else if (ms.erasure.isInstance(value)) {
+        Some(value.asInstanceOf[S])
       } else if (ms == manifest[String]) { 
         Some(value.toString.asInstanceOf[S])
       } else if ((ms == manifest[Int] || ms == manifest[java.lang.Integer])  && 
                  value.isInstanceOf[java.lang.Integer]) {
         Some(value.asInstanceOf[S])
+      } else if (ms == manifest[Boolean] || ms == manifest[java.lang.Boolean]) {
+        if (value.isInstanceOf[java.lang.Boolean]) {
+          Some(value.asInstanceOf[S])
+        } else {
+          if (value == null) {
+            Some(new java.lang.Boolean(false).asInstanceOf[S])
+          } else {
+            Some(new java.lang.Boolean(true).asInstanceOf[S])
+          }
+        }
       } else {
          None
       }
@@ -99,6 +112,12 @@ object Expression {
         }
       } else if (m == goalManifest) {
         Some(value.asInstanceOf[S])
+      } else if (goalManifest == manifest[Boolean] || goalManifest == manifest[java.lang.Boolean]) {
+        if (value == null) {
+          Some(false.asInstanceOf[S])
+        } else {
+          Some(true.asInstanceOf[S])
+        }
       } else {
         None
       }

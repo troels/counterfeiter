@@ -5,10 +5,10 @@ import org.scalatest.matchers.ShouldMatchers
 
 import java.io.File
 
-import org.bifrost.counterfeiter.{ ExpressionParser, VariablePad, Expression,  HtmlOutput,
+import org.bifrost.counterfeiter.{ ExpressionParser, VariablePad, Expression,  HtmlOutput, 
 				                           BasicFunctions, HtmlTemplateParser, EmptyMachine, U,
 				                           Counterfeiter, HtmlEscapedString }
-import Expression.{ ElementaryExpression, UntypedExpression } 
+import Expression.{ ElementaryExpression, UntypedExpression, BasicExpression } 
 import scala.util.parsing.input.CharSequenceReader
 
 class SimpleTest extends FunSuite with ShouldMatchers { 
@@ -455,5 +455,18 @@ def main
     val mod  = U.compileModule(str)
 
     mod.renderTemplate("A.main") should equal ("abc")
+  }
+
+  test("strange extractions") { 
+    new UntypedExpression(true.asInstanceOf[java.lang.Boolean]).extractOrThrow[Boolean] should equal (true)
+    new UntypedExpression(false.asInstanceOf[java.lang.Boolean]).extractOrThrow[Boolean] should equal (false)
+    new UntypedExpression(null).extractOrThrow[Boolean] should equal (false)
+    new UntypedExpression(Some(1)).extractOrThrow[Boolean] should equal (true)
+    
+    new UntypedExpression(HtmlEscapedString("Hello")).extractOrThrow[HtmlEscapedString] should equal (
+      HtmlEscapedString("Hello"))
+
+    new BasicExpression[Option[String]](null).extractOrThrow[Boolean] should equal (false)
+    new BasicExpression[Option[String]](Some("hello")).extractOrThrow[Boolean] should equal (true)
   }
 }
