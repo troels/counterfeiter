@@ -56,13 +56,19 @@ object Expression {
     }
 
     override def extract[S](implicit ms: Manifest[S]): Option[S] =  {
-      if (ms.erasure == classOf[List[_]] && value == null) { 
-        Some(List().asInstanceOf[S])
-      } else if (ms.erasure == classOf[List[_]] && value.isInstanceOf[java.util.List[_]]) {
-        Some(((value.asInstanceOf[java.util.List[AnyRef]] toList) map {
-          v => new UntypedExpression(v) } toList).asInstanceOf[S])
-      } else if (ms.erasure == manifest[List[_]].erasure && value.isInstanceOf[List[_]]) {
-        Some((value.asInstanceOf[List[AnyRef]] map { v => new UntypedExpression(v) }).asInstanceOf[S])
+      if (ms.erasure == classOf[List[_]]) { 
+        if (value.isInstanceOf[java.util.List[_]]) {
+          Some(((value.asInstanceOf[java.util.List[AnyRef]] toList) map {
+            v => new UntypedExpression(v) } toList).asInstanceOf[S])
+        } else if (value.isInstanceOf[List[_]]) {
+          Some((value.asInstanceOf[List[AnyRef]] map { v => new UntypedExpression(v) }).asInstanceOf[S])
+        } else if (value.isInstanceOf[Array[_]]) { 
+          Some((value.asInstanceOf[Array[AnyRef]] map { v => new UntypedExpression(v) } toList).asInstanceOf[S])
+        } else if (value == null) { 
+          Some(List().asInstanceOf[S])
+        } else {
+          None
+        }
       } else if (ms.erasure == classOf[Map[_, _]] && value == null) { 
         Some(Map().asInstanceOf[S])
       } else if (ms.erasure == manifest[Map[_, _]].erasure && value.isInstanceOf[Map[_, _]]) {

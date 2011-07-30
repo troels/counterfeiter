@@ -466,6 +466,9 @@ def main
     new UntypedExpression(HtmlEscapedString("Hello")).extractOrThrow[HtmlEscapedString] should equal (
       HtmlEscapedString("Hello"))
 
+    new UntypedExpression(List("hello", "there") toArray).extractOrThrow[List[UntypedExpression]].apply(1)
+        .extractOrThrow[String] should equal ("there")
+    
     new BasicExpression[Option[String]](null).extractOrThrow[Boolean] should equal (false)
     new BasicExpression[Option[String]](Some("hello")).extractOrThrow[Boolean] should equal (true)
   }
