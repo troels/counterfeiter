@@ -72,7 +72,7 @@ object Expression {
       } else if (ms.erasure.isInstance(value)) {
         Some(value.asInstanceOf[S])
       } else if (ms == manifest[String]) { 
-        Some(value.toString.asInstanceOf[S])
+        Some(if (value == null) "null".asInstanceOf[S] else value.toString.asInstanceOf[S])
       } else if ((ms == manifest[Int] || ms == manifest[java.lang.Integer])  && 
                  value.isInstanceOf[java.lang.Integer]) {
         Some(value.asInstanceOf[S])
