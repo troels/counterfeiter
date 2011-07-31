@@ -56,7 +56,23 @@ object Expression {
     }
 
     override def extract[S](implicit ms: Manifest[S]): Option[S] =  {
-      if (ms.erasure == classOf[List[_]]) { 
+      if (ms == manifest[Boolean] || ms == manifest[java.lang.Boolean]) {
+        if (value.isInstanceOf[java.lang.Boolean]) {
+          Some(value.asInstanceOf[S])
+        } else if (value.isInstanceOf[Option[_]]) { 
+          if (value == None) { 
+            Some(java.lang.Boolean.FALSE.asInstanceOf[S])
+          } else {
+            Some(java.lang.Boolean.TRUE.asInstanceOf[S])
+          }
+        } else {
+          if (value == null) {
+            Some(java.lang.Boolean.FALSE.asInstanceOf[S])
+          } else {
+            Some(java.lang.Boolean.TRUE.asInstanceOf[S])
+          }
+        }
+      } else if (ms.erasure == classOf[List[_]]) { 
         if (value.isInstanceOf[java.util.List[_]]) {
           Some(((value.asInstanceOf[java.util.List[AnyRef]] toList) map {
             v => new UntypedExpression(v) } toList).asInstanceOf[S])
@@ -82,16 +98,6 @@ object Expression {
       } else if ((ms == manifest[Int] || ms == manifest[java.lang.Integer])  && 
                  value.isInstanceOf[java.lang.Integer]) {
         Some(value.asInstanceOf[S])
-      } else if (ms == manifest[Boolean] || ms == manifest[java.lang.Boolean]) {
-        if (value.isInstanceOf[java.lang.Boolean]) {
-          Some(value.asInstanceOf[S])
-        } else {
-          if (value == null) {
-            Some(new java.lang.Boolean(false).asInstanceOf[S])
-          } else {
-            Some(new java.lang.Boolean(true).asInstanceOf[S])
-          }
-        }
       } else {
          None
       }

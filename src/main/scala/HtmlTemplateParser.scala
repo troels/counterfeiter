@@ -99,9 +99,8 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
       (wsNoNl ~> rep(namedArgs)) <~ nl) ~
     newIndent(indent, parseArgsOnLevel, Some(List())) ^^ { 
       case tmplName ~ posArgs ~ simpleNamedArgs ~ involvedNamedArgs => 
-	new TemplateCall(tmplName, posArgs, 
-			 simpleNamedArgs ++
-			 (involvedNamedArgs map { case (id, v) => id -> new Expression.BaseElemExpression(v) }) toMap)
+	      new TemplateCall(tmplName, posArgs, simpleNamedArgs ++
+			                   (involvedNamedArgs map { case (id, v) => id -> new Expression.BaseElemExpression(v) }) toMap)
     }
   
     
@@ -109,13 +108,13 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
     (indent ~ forcedWs) ^^ { case a ~ b => a + b }
 
   def htmlElem(indent: String): Parser[BaseElem] =
-    tagElem(indent) | textElem(indent) | ifElem(indent) | forElem(indent) | templateCallElem(indent)
+    tagElem(indent) | textElem(indent) | ifElem(indent) | forElem(indent) | letElem(indent) | templateCallElem(indent)
 
   def newIndent[T](indent: String, cont: String => Parser[T], alt: Option[T] = None): Parser[T] = 
     Parser[T] { in =>
       guard(parseLinePrefix(indent))(in) match {
-	case Success(res, next) => cont(res)(next) 
-	case ns: NoSuccess => alt map { Success(_, in) } getOrElse ns
+	      case Success(res, next) => cont(res)(next) 
+	      case ns: NoSuccess => alt map { Success(_, in) } getOrElse ns
       }
     }
   
@@ -126,30 +125,36 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
     def ifClause(ifPhrase: String, ind: String, expr: Option[BaseExpression] = None) = {
       (ind ~ "+" ~> wsNoNl ~> ifPhrase ~> wsNoNl ~> (expr map (success(_)) getOrElse expression) <~ wsNoNl <~ nl) ~ 
        newIndent(indent, parseElemsOnLevel, Some(EmptyElem)) ^^ { case expr ~ cons => {
-	 (expr, cons) 
+	       (expr, cons) 
        } } }
     (ifClause("if", "") ~ rep(ifClause("elsif", indent)) ~ 
      opt(ifClause("else", indent, Some(Expression.trueExpression)))) ^^ {
-      case main ~ elsifs ~ els => new IfElem((main +: elsifs) ++ (els toList) :_*)
+       case main ~ elsifs ~ els => new IfElem((main +: elsifs) ++ (els toList) :_*)
     }
   }
 
   def textElem(indent: String): Parser[BaseElem] = 
     "|" ~> wsNoNl ~> 
       (rep(
-	("[^\r\n{]+".r ^^ (new Text(_))) | 
-	("{" ~> wsNoNl ~> expression ^^ (new Expression(_))) <~ wsNoNl <~ '}') ^^ {
-	  new ElemList(_ :_*) 
-	}) <~ wsNoNl <~ nl
+	      ("[^\r\n{]+".r ^^ (new Text(_))) | 
+	      ("{" ~> wsNoNl ~> expression ^^ (new Expression(_))) <~ wsNoNl <~ '}') ^^ {
+	        new ElemList(_ :_*) 
+	      }) <~ wsNoNl <~ nl
     
   
   def forElem(indent: String): Parser[BaseElem] = 
     ("+" ~> wsNoNl ~> "for" ~> wsNoNl ~> "[a-zA-Z_][\\w_]*".r <~ wsNoNl <~ "in" <~ wsNoNl) ~
     (expression <~ nl) ~
     newIndent(indent, parseElemsOnLevel, Some(EmptyElem)) ^^ {
-	case variable ~ expr ~ clause => new ForElem(variable, expr, clause)
+	    case variable ~ expr ~ clause => new ForElem(variable, expr, clause)
     }
   
+  def letElem(indent: String): Parser[BaseElem] = 
+    ("+" ~> wsNoNl ~> "let" ~> wsNoNl ~> "[a-zA-Z_][\\w_]*".r <~ wsNoNl <~ "=" <~ wsNoNl) ~ (expression <~ nl) ~
+    newIndent(indent, parseElemsOnLevel, Some(EmptyElem)) ^^ {
+	    case variable ~ expr ~ clauses => new LetElem(variable, expr, clauses)
+    }
+
   def identifier = "[a-zA-Z_][-\\w]*".r
   
   def fullyQualifiedIdentifier = 
@@ -182,21 +187,21 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   def namespace: Parser[List[HtmlTemplate]] =
     Parser[List[HtmlTemplate]] { in =>
       ("(?:[ \r\t\n]*[\r\n])?".r ~> namespaceDeclaration)(in) match {
-	case Success(namespace, next) => rep1("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration(namespace))(next)
-	case o: NoSuccess => rep1("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration(""))(in)
+	      case Success(namespace, next) => rep1("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration(namespace))(next)
+	      case o: NoSuccess => rep1("(?:[ \r\t\n]*[\r\n])?".r ~> templateDeclaration(""))(in)
       }
      }
   
   def parseModule(str: String): TemplateCollection = 
     (rep1(namespace))(new CharSequenceReader(str)) match {
       case Success(res, next) => {
-	("\\s*".r ~> EofCh)(next) match { 
-	  case Success(_, next) => new TemplateCollection(res flatten)
-	  case ns: NoSuccess => 
-	    throw new HtmlTemplateParserException("Garbage at end of file:\n%s".format(next.pos.longString))
-	}
+	      ("\\s*".r ~> EofCh)(next) match { 
+	        case Success(_, next) => new TemplateCollection(res flatten)
+	        case ns: NoSuccess => 
+	          throw new HtmlTemplateParserException("Garbage at end of file:\n%s".format(next.pos.longString))
+	      }
       }
       case ns: NoSuccess => 
-	throw new HtmlTemplateParserException("Failed to parser because of: %s".format(ns.msg))
+	      throw new HtmlTemplateParserException("Failed to parser because of: %s".format(ns.msg))
     }
 }

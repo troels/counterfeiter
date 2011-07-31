@@ -83,6 +83,12 @@ object HtmlOutput {
     }
   }
 
+  class LetElem(variable: String, binding: BaseExpression, clauses: BaseElem) extends BaseElem{
+    override def eval(m: Machine) = {
+      clauses eval (m newPad Map(variable -> (binding eval m)))
+    }
+  }
+
   class TemplateCall(templateName: String, positionalArguments: List[BaseExpression], 
 		                 namedArguments: Map[String, BaseExpression]) extends BaseElem {
     override def eval(m: Machine) = 

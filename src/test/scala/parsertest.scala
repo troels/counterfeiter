@@ -405,7 +405,6 @@ def test arg
   }
 
   test("for loop counter") { 
-    case class TestType(val arg: Int)
     val str = """
 namespace A
     
@@ -420,6 +419,22 @@ def test
     val mod  = U.compileModule(str)
 
     mod.renderTemplate("A.test") should equal ("hihihiHelloHello")
+  }
+
+  test("test let statement") { 
+    val str = """
+namespace A
+    
+def test
+ + let a= [1,2,3,4,5]
+  + for i in a
+   + let b  =i + 1
+    | {b}
+"""
+    
+    val mod  = U.compileModule(str)
+
+    mod.renderTemplate("A.test") should equal ("23456")
   }
 
   test("boolean condition") { 
@@ -471,5 +486,8 @@ def main
     
     new BasicExpression[Option[String]](null).extractOrThrow[Boolean] should equal (false)
     new BasicExpression[Option[String]](Some("hello")).extractOrThrow[Boolean] should equal (true)
+
+    new UntypedExpression(Some("hello")).extractOrThrow[Boolean] should equal (true)
+    new UntypedExpression(None).extractOrThrow[Boolean] should equal (false)
   }
 }
