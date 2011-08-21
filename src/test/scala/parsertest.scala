@@ -459,7 +459,6 @@ def main
   }
 
   test("string concatenation") { 
-    case class TestType(val arg: Int)
     val str = """
 namespace A
     
@@ -470,6 +469,19 @@ def main
     val mod  = U.compileModule(str)
 
     mod.renderTemplate("A.main") should equal ("abc")
+  }
+
+  test("Some functions") { 
+    val str = """
+namespace A
+    
+def main
+ | { guid } { guid } { u "hello theøæøæø" }
+"""
+    
+    val mod  = U.compileModule(str)
+
+    mod.renderTemplate("A.main") should fullyMatch regex ("^[-0-9a-f]+ [-0-9a-f]+ \\Qhello+the%C3%B8%C3%A6%C3%B8%C3%A6%C3%B8\\E" r)
   }
 
   test("strange extractions") { 
@@ -489,5 +501,7 @@ def main
 
     new UntypedExpression(Some("hello")).extractOrThrow[Boolean] should equal (true)
     new UntypedExpression(None).extractOrThrow[Boolean] should equal (false)
+
+    new UntypedExpression(List()).extractOrThrow[Boolean] should equal (false)
   }
 }

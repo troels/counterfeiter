@@ -65,6 +65,8 @@ object Expression {
           } else {
             Some(java.lang.Boolean.TRUE.asInstanceOf[S])
           }
+        } else if (value.isInstanceOf[Seq[_]]) { 
+          Some((!value.asInstanceOf[Seq[_]].isEmpty).asInstanceOf[S])
         } else {
           if (value == null) {
             Some(java.lang.Boolean.FALSE.asInstanceOf[S])
@@ -162,6 +164,8 @@ object Expression {
     override def extract[T](implicit m: Manifest[T]): Option[T] = 
       if (m == manifest[List[ElementaryExpression]]) { 
         Some(toList.asInstanceOf[T])
+      } else if (m == manifest[Boolean]) { 
+        Some(toList.nonEmpty.asInstanceOf[T])
       } else if (m == manifest[String]) { 
         Some(("[%s]" format (expr map {  _.extractOrThrow[String] } mkString ", ")).asInstanceOf[T])
       } else {

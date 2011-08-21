@@ -1,6 +1,8 @@
 package org.bifrost.counterfeiter
 
 import scala.math
+import java.net.URLEncoder
+import java.util.UUID
 
 object BasicFunctions {
   import Expression.{FunctionExpression, ElementaryExpression, BasicExpression}
@@ -53,7 +55,24 @@ object BasicFunctions {
         HtmlEscapedString(args(0).extractOrThrow[String]))
   }
   
-  val functionList = List(substring, escaped)
+  def urlencode = new FunctionExpression { 
+    override def name = "u" 
+    override def numberOfArgs = 1
+    
+    override def execute(args: ElementaryExpression*): ElementaryExpression = 
+      new BasicExpression[String](
+        URLEncoder encode (args(0).extractOrThrow[String], "UTF-8"))
+  }
+
+  def guid = new FunctionExpression { 
+    override def name = "guid"
+    override def numberOfArgs = 0
+    
+    override def execute(args: ElementaryExpression*): ElementaryExpression = 
+      new BasicExpression[String](UUID.randomUUID toString)
+  }
+
+  val functionList = List(substring, escaped, urlencode, guid)
   
   val standardPad = new VariablePad(functionList map { f => f.name -> f } toMap)
 }
