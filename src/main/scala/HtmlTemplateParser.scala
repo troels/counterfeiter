@@ -6,7 +6,7 @@ import scala.util.parsing.input.CharSequenceReader.EofCh
 import scala.collection.immutable.ListMap
 
 import HtmlOutput._
-import Expression.{BaseExpression, BasicExpression}
+import Expression.{BaseExpression, BasicExpression, ComplexExpression}
 
 object HtmlTemplateParser extends RegexParsers with ImplicitConversions { 
   import U.Implicits._
@@ -70,9 +70,14 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
   }
 
   def cssIdentifier = "[\\w_-]+".r
-  def cssLines(indent: String): Parser[List[(String, String)]] = 
+  def cssLines(indent: String): Parser[List[(String, BaseElem)]] = 
     rep1(indent ~>
-         rep1((wsNoNl ~> cssIdentifier <~ ':' <~ wsNoNl) ~ ("[^;\r\n]+".r <~ ';')) <~ nl) ^^ {
+         rep1(
+           (wsNoNl ~> cssIdentifier <~ ':' <~ wsNoNl) ~ ((
+             ("[^;\r\n{]+".r ^^ (new Text(_))) |
+             ("{" ~> wsNoNl ~> expression ^^ (new Expression(_))) <~ wsNoNl <~ '}' ) <~ wsNoNl <~ ';'
+            )) 
+         <~ nl) ^^ {
       lst => lst flatMap { _ map (tuplify _) }
     }
   
@@ -85,7 +90,9 @@ object HtmlTemplateParser extends RegexParsers with ImplicitConversions {
          tag 
        else
          tag addAttrib (
-           "style", new BasicExpression[String](css map { case (k, v) => "%s: %s" format (k, v) } mkString "; "))
+           "style", new ComplexExpression {
+             override def eval(m: Machine) = 
+               new BasicExpression[String](css map { case (k, v) => "%s: %s" format (k, v eval m) } mkString "; ")})
        tagWithStyle addContent rest
       }
     }

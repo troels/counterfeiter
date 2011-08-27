@@ -63,6 +63,18 @@ object BasicFunctions {
       new BasicExpression[String](
         URLEncoder encode (args(0).extractOrThrow[String], "UTF-8"))
   }
+  
+  def if_ = new FunctionExpression { 
+    override def name = "if" 
+    override def numberOfArgs = 3
+    
+    override def execute(args: ElementaryExpression*): ElementaryExpression = 
+      if (args(0).extractOrThrow[Boolean]) { 
+        args(1) 
+      } else {
+        args(2)
+      }
+  }
 
   def guid = new FunctionExpression { 
     override def name = "guid"
@@ -72,7 +84,7 @@ object BasicFunctions {
       new BasicExpression[String](UUID.randomUUID toString)
   }
 
-  val functionList = List(substring, escaped, urlencode, guid)
+  val functionList = List(substring, escaped, urlencode, guid, if_)
   
   val standardPad = new VariablePad(functionList map { f => f.name -> f } toMap)
 }

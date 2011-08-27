@@ -38,7 +38,7 @@ object ExpressionParser extends RegexParsers {
   def operator: Parser[FunctionExpression] = binaryOperator | unaryOperator
 
   def binaryOperator: Parser[BinaryOperatorFunction] = 
-    "<=|>=|\\+\\+|[-+*/=<>]|!=|(?:(?:and|or|xor)(?!\\w))".r ^^ (Expression.binaryOperatorMap(_))
+    "%|<=|>=|\\+\\+|[-+*/=<>]|!=|(?:(?:and|or|xor)(?!\\w))".r ^^ (Expression.binaryOperatorMap(_))
 
   def unaryOperator: Parser[UnaryOperatorFunction] = 
     "-|(?:not(?!\\w))".r ^^ (Expression.unaryOperatorMap(_))

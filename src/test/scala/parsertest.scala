@@ -484,6 +484,43 @@ def main
     mod.renderTemplate("A.main") should fullyMatch regex ("^[-0-9a-f]+ [-0-9a-f]+ \\Qhello+the%C3%B8%C3%A6%C3%B8%C3%A6%C3%B8\\E" r)
   }
 
+  test("Modulus") { 
+    val str = """
+namespace A
+    
+def main
+    + let a = 3
+     + if a % 2 = 1
+      | Success
+     + else
+      | Error
+     + if a % 2 = 0
+      | Error
+     + else
+      | Success
+
+"""
+    
+    val mod  = U.compileModule(str)
+    
+    mod.renderTemplate("A.main") should equal("Success\nSuccess")
+  }
+
+  test("New if") { 
+    val str = """
+namespace A
+    
+def main
+ + for a in [1,2,3,4]
+  div
+   a: { if (for_loop_index_a % 2 = 0) "even" "odd" };
+"""
+    
+    val mod  = U.compileModule(str)
+
+    mod.renderTemplate("A.main") should equal("""<div style="a: even"></div><div style="a: odd"></div><div style="a: even"></div><div style="a: odd"></div>""")
+  }
+
   test("strange extractions") { 
     new UntypedExpression(true.asInstanceOf[java.lang.Boolean]).extractOrThrow[Boolean] should equal (true)
     new UntypedExpression(false.asInstanceOf[java.lang.Boolean]).extractOrThrow[Boolean] should equal (false)

@@ -305,7 +305,7 @@ object Expression {
   val binaryOperators = List(MultiplyFunction, PlusFunction,   MinusFunction, 
                              DivideFunction,   AndFunction,    OrFunction, 
                              XorFunction,      EqualsFunction, NotEqualsFunction,
-                             ConcatFunction, 
+                             ModulusFunction, ConcatFunction, 
                              LessThanFunction, LessThanOrEqualFunction, 
                              GreaterThanFunction, GreaterThanOrEqualFunction)
   val binaryOperatorMap = (binaryOperators map { op => op.name -> op })
