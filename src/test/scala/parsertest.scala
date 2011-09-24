@@ -521,6 +521,24 @@ def main
     mod.renderTemplate("A.main") should equal("""<div style="a: even"></div><div style="a: odd"></div><div style="a: even"></div><div style="a: odd"></div>""")
   }
 
+  test("Equivalence") { 
+    val str = """
+namespace A
+    
+def main arg
+ + for a in ["a","b", "c"]
+  + if  a = arg 
+    | hello {a}
+  + else
+    | goodbye {a}
+   
+"""
+    val mod  = U.compileModule(str)
+
+    mod.renderTemplate("A.main", map=Map("arg" -> new UntypedExpression("b"))) should equal(
+      """goodbye ahello bgoodbye c""")
+  }
+
   test("strange extractions") { 
     new UntypedExpression(true.asInstanceOf[java.lang.Boolean]).extractOrThrow[Boolean] should equal (true)
     new UntypedExpression(false.asInstanceOf[java.lang.Boolean]).extractOrThrow[Boolean] should equal (false)

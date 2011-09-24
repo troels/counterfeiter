@@ -47,10 +47,11 @@ object Expression {
 
   // UntypedExpression / BasicExpression's respective responsibilities need to be clarified 
   // or one of them removed.
-  class UntypedExpression(private val value: AnyRef) extends ElementaryExpression {
+  class UntypedExpression(val value: AnyRef) extends ElementaryExpression {
     override def equals(that: Any) = {
       that match {
         case _that: UntypedExpression => _that.value == value
+        case _that: BasicExpression[_] => _that.value == value
         case _ => false
       }
     }
@@ -107,9 +108,10 @@ object Expression {
   }
 
     
-  class BasicExpression[T](private val value: T)(implicit m: Manifest[T]) extends ElementaryExpression {
+  class BasicExpression[T](val value: T)(implicit m: Manifest[T]) extends ElementaryExpression {
     override def equals(that: Any) = {
       that match { 
+        case _that: UntypedExpression => _that.value == value
         case _that: BasicExpression[_] => _that.value == value
         case _ => false
       }
