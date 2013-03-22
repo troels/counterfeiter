@@ -59,7 +59,7 @@ and will result in html much like:
 ```
 
 All strings from outside (or inside) are html-escaped once. If they should not be escaped, 
-their insertion must be preceded by an e like {e title}.
+their insertion must be preceded by an ```e``` like ```{e title}```.
 
 More
 ==========
