@@ -1,4 +1,4 @@
-counterfeiter
+Counterfeiter
 =============
 
 A templating engine for programmers, aiming at finding just the right balance of power:
@@ -62,6 +62,7 @@ All strings from outside (or inside) are html-escaped once. If they should not b
 their insertion must be preceded by an e like {e title}.
 
 More.
+==========
 
 There is a wide assortment of other features available, like let-statements, maps, lists, for-loops, 
 if-statements, default arguments, arithmetic, boolean statements and many more features.
