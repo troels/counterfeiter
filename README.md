@@ -6,7 +6,7 @@ Versatile and full of proven features while avoiding injections,
 excessive code-in-templates and boilerplate.
 
 This is an example template:
-
+```
 namespace Main
 
 def main title statement
@@ -30,13 +30,17 @@ def frontpage title
     h1 | Welcome to Counterfeiter
     .text
       Enjoy yourself
-
+```
 
 The code can be called from Scala or Java, like:
 
+```scala
 Template.render("Site.frontpage", "Counterfeiter title")
+```
 
 and will result in html much like:
+
+```html
 <!doctype html>
 <html>
  <head>
@@ -52,6 +56,7 @@ and will result in html much like:
   </div>
  </body>
 </html>
+```
 
 All strings from outside (or inside) are html-escaped once. If they should not be escaped, 
 their insertion must be preceded by an e like {e title}.
