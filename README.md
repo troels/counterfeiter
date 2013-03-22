@@ -1,8 +1,8 @@
 Counterfeiter
 =============
 
-A templating engine for programmers, aiming at finding just the right balance of power:
-Versatile and full of proven features while avoiding injections, 
+A templating engine for programmers, aimed at finding just the right balance of power:
+Versatile and full of features to help while avoiding injections, 
 excessive code-in-templates and boilerplate.
 
 This is an example template:
@@ -61,7 +61,7 @@ and will result in html much like:
 All strings from outside (or inside) are html-escaped once. If they should not be escaped, 
 their insertion must be preceded by an e like {e title}.
 
-More.
+More
 ==========
 
 There is a wide assortment of other features available, like let-statements, maps, lists, for-loops, 
